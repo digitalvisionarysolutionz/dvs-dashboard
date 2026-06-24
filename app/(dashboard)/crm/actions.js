@@ -160,7 +160,31 @@ export async function moveLeadStage(formData) {
 
   revalidatePath("/crm");
 }
+export async function restoreLead(formData) {
+  const leadId = formData.get("leadId");
 
+  if (!leadId) {
+    return;
+  }
+
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const { error } = await supabase
+    .from("leads")
+    .update({
+      stage: "new_lead",
+      status: "active",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", leadId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/crm");
+}
 export async function deleteLead(formData) {
   const leadId = formData.get("leadId");
 

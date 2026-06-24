@@ -8,6 +8,7 @@ import {
   createLead,
   deleteLead,
   moveLeadStage,
+  restoreLead,
   updateLead,
 } from "../../app/(dashboard)/crm/actions.js";
 
@@ -129,6 +130,46 @@ function SummaryCards({ summary }) {
         </article>
       ))}
     </section>
+  );
+}
+
+function CRMViewToggle({ viewMode, onViewChange, pipelineCount, archiveCount }) {
+  const views = [
+    { key: "pipeline", label: "Pipeline", count: pipelineCount },
+    { key: "archive", label: "Archive", count: archiveCount },
+  ];
+
+  return (
+    <div className="mb-5 border-b border-[var(--app-border)]">
+      <div className="flex flex-wrap gap-8">
+        {views.map((view) => {
+          const isActive = viewMode === view.key;
+
+          return (
+            <button
+              key={view.key}
+              type="button"
+              onClick={() => onViewChange(view.key)}
+              className={`relative pb-4 text-sm font-black transition md:text-base ${
+                isActive
+                  ? "text-[var(--app-accent)]"
+                  : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
+              }`}
+            >
+              {view.label}
+
+              <span className="ml-2 rounded-[var(--radius-pill)] bg-[var(--app-accent-soft)] px-2 py-0.5 text-xs font-black">
+                {view.count}
+              </span>
+
+              {isActive && (
+                <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[var(--app-accent)] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -432,6 +473,118 @@ function CRMColumn({ stage, leads, onOpenDetails, onOpenCreate, onOpenEdit }) {
   );
 }
 
+function ArchivedLeadCard({ lead, onOpenDetails, onOpenEdit }) {
+  return (
+    <article className="grid gap-4 border-b border-[var(--app-border)] px-4 py-4 transition last:border-b-0 hover:bg-white/[0.035] xl:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.8fr)_auto] xl:items-center">
+      <div className="flex min-w-0 items-start gap-3">
+        <LeadAvatar lead={lead} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="min-w-0 truncate text-base font-black text-white">
+              {lead.businessName}
+            </h3>
+
+            <StatusBadge tone="neutral">Archived</StatusBadge>
+          </div>
+
+          <p className="mt-1 break-words text-sm text-[var(--app-text-muted)]">
+            Contact: {lead.contactName}
+          </p>
+
+          <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-[var(--app-text-muted)]">
+            {lead.serviceInterest}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-black/20 p-3 text-sm">
+        <p className="text-xs font-black uppercase tracking-widest text-[var(--app-text-soft)]">
+          Lead Value
+        </p>
+
+        <p className="mt-2 font-black text-[var(--app-accent)]">
+          {lead.estimatedValueLabel}
+        </p>
+
+        <p className="mt-3 break-words text-xs text-[var(--app-text-muted)]">
+          Source: {lead.source}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onOpenDetails(lead)}
+        >
+          View
+        </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onOpenEdit(lead)}
+        >
+          Edit
+        </Button>
+
+        <form action={restoreLead}>
+          <input type="hidden" name="leadId" value={lead.id} />
+
+          <Button type="submit" size="sm">
+            Restore
+          </Button>
+        </form>
+
+        <form action={deleteLead}>
+          <input type="hidden" name="leadId" value={lead.id} />
+
+          <Button
+            type="submit"
+            variant="danger"
+            size="sm"
+            onClick={(event) => {
+              if (
+                !window.confirm(
+                  "Delete this archived lead permanently? This cannot be undone."
+                )
+              ) {
+                event.preventDefault();
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </form>
+      </div>
+    </article>
+  );
+}
+
+function ArchivedLeadsView({ leads, onOpenDetails, onOpenEdit }) {
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-[#050a10]">
+      {leads.length > 0 ? (
+        leads.map((lead) => (
+          <ArchivedLeadCard
+            key={lead.id}
+            lead={lead}
+            onOpenDetails={onOpenDetails}
+            onOpenEdit={onOpenEdit}
+          />
+        ))
+      ) : (
+        <div className="p-8 text-center text-sm text-[var(--app-text-muted)]">
+          No archived leads found.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
   if (!lead) return null;
 
@@ -726,7 +879,7 @@ function LeadFormModal({ defaultStage, lead, onClose }) {
             <FormField label="Stage">
               <select
                 name="stage"
-                defaultValue={lead?.rawStage || defaultStage}
+                defaultValue={lead?.rawStage === "archived" ? defaultStage : lead?.rawStage || defaultStage}
                 className="dvs-form-input"
               >
                 {leadStages.map((stage) => (
@@ -836,9 +989,10 @@ function InfoBlock({ label, children, className = "" }) {
 }
 
 export default function CRMKanban({ leads = [], summary }) {
-  const [detailsLead, setDetailsLead] = useState(null);
+const [detailsLead, setDetailsLead] = useState(null);
 const [editingLead, setEditingLead] = useState(null);
 const [leadFormStage, setLeadFormStage] = useState("");
+const [viewMode, setViewMode] = useState("pipeline");
 const [searchValue, setSearchValue] = useState("");
 const [serviceValue, setServiceValue] = useState("all");
 const [sourceValue, setSourceValue] = useState("all");
@@ -863,42 +1017,52 @@ const [sourceValue, setSourceValue] = useState("all");
     return [...new Set(leads.map((lead) => lead.source).filter(Boolean))];
   }, [leads]);
 
-  const visibleLeads = useMemo(() => {
-    let nextLeads = leads.filter(
-      (lead) => lead.rawStatus !== "archived" && lead.rawStage !== "archived"
-    );
+  const filteredLeads = useMemo(() => {
+  let nextLeads = [...leads];
 
-    if (searchValue.trim()) {
-      const normalizedSearch = searchValue.toLowerCase();
+  if (searchValue.trim()) {
+    const normalizedSearch = searchValue.toLowerCase();
 
-      nextLeads = nextLeads.filter((lead) => {
-        return (
-          lead.businessName.toLowerCase().includes(normalizedSearch) ||
-          lead.contactName.toLowerCase().includes(normalizedSearch) ||
-          lead.email.toLowerCase().includes(normalizedSearch) ||
-          lead.phone.toLowerCase().includes(normalizedSearch) ||
-          lead.serviceInterest.toLowerCase().includes(normalizedSearch) ||
-          lead.source.toLowerCase().includes(normalizedSearch)
-        );
-      });
-    }
-
-    if (serviceValue !== "all") {
-      nextLeads = nextLeads.filter(
-        (lead) => lead.serviceInterest === serviceValue
+    nextLeads = nextLeads.filter((lead) => {
+      return (
+        lead.businessName.toLowerCase().includes(normalizedSearch) ||
+        lead.contactName.toLowerCase().includes(normalizedSearch) ||
+        lead.email.toLowerCase().includes(normalizedSearch) ||
+        lead.phone.toLowerCase().includes(normalizedSearch) ||
+        lead.serviceInterest.toLowerCase().includes(normalizedSearch) ||
+        lead.source.toLowerCase().includes(normalizedSearch)
       );
-    }
+    });
+  }
 
-    if (sourceValue !== "all") {
-      nextLeads = nextLeads.filter((lead) => lead.source === sourceValue);
-    }
+  if (serviceValue !== "all") {
+    nextLeads = nextLeads.filter(
+      (lead) => lead.serviceInterest === serviceValue
+    );
+  }
 
-    return nextLeads;
-  }, [leads, searchValue, serviceValue, sourceValue]);
+  if (sourceValue !== "all") {
+    nextLeads = nextLeads.filter((lead) => lead.source === sourceValue);
+  }
+
+  return nextLeads;
+}, [leads, searchValue, serviceValue, sourceValue]);
+
+const pipelineLeads = useMemo(() => {
+  return filteredLeads.filter(
+    (lead) => lead.rawStatus !== "archived" && lead.rawStage !== "archived"
+  );
+}, [filteredLeads]);
+
+const archivedLeads = useMemo(() => {
+  return filteredLeads.filter(
+    (lead) => lead.rawStatus === "archived" || lead.rawStage === "archived"
+  );
+}, [filteredLeads]);
 
   function getStageLeads(stageKey) {
-    return visibleLeads.filter((lead) => lead.rawStage === stageKey);
-  }
+  return pipelineLeads.filter((lead) => lead.rawStage === stageKey);
+}
 
   function openCreateLead(stageKey = "new_lead") {
   setDetailsLead(null);
@@ -909,7 +1073,9 @@ const [sourceValue, setSourceValue] = useState("all");
 function openEditLead(lead) {
   setDetailsLead(null);
   setEditingLead(lead);
-  setLeadFormStage(lead.rawStage || "new_lead");
+  setLeadFormStage(
+    lead.rawStage === "archived" ? "new_lead" : lead.rawStage || "new_lead"
+  );
 }
 
 function closeLeadForm() {
@@ -922,18 +1088,25 @@ function closeLeadForm() {
       <SummaryCards summary={summary} />
 
       <section className="min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border)] bg-gradient-to-br from-white/[0.045] via-white/[0.025] to-cyan-300/[0.025] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)]">
-  <CRMFilters
-    searchValue={searchValue}
-    onSearchChange={setSearchValue}
-    serviceValue={serviceValue}
-    onServiceChange={setServiceValue}
-    sourceValue={sourceValue}
-    onSourceChange={setSourceValue}
-    services={services}
-    sources={sources}
-  />
+  <CRMViewToggle
+  viewMode={viewMode}
+  onViewChange={setViewMode}
+  pipelineCount={pipelineLeads.length}
+  archiveCount={archivedLeads.length}
+/>
 
+<CRMFilters
+  searchValue={searchValue}
+  onSearchChange={setSearchValue}
+  serviceValue={serviceValue}
+  onServiceChange={setServiceValue}
+  sourceValue={sourceValue}
+  onSourceChange={setSourceValue}
+  services={services}
+  sources={sources}
+/>
 
+{viewMode === "pipeline" ? (
   <div className="dvs-kanban-scroll w-full max-w-full overflow-x-auto overscroll-x-contain pb-4">
     <div className="flex min-w-max flex-nowrap gap-4 pr-8">
       {leadStages.map((stage) => (
@@ -947,7 +1120,14 @@ function closeLeadForm() {
 />
       ))}
     </div>
-  </div>
+    </div>
+) : (
+  <ArchivedLeadsView
+    leads={archivedLeads}
+    onOpenDetails={setDetailsLead}
+    onOpenEdit={openEditLead}
+  />
+)}
 </section>
 
 
