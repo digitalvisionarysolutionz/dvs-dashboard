@@ -51,9 +51,7 @@ function cleanDate(value) {
   return nextValue;
 }
 
-export async function createLead(formData) {
-  const { supabase, organizationId } = await getWorkspaceContext();
-
+function buildLeadPayload(formData, organizationId) {
   const businessName = cleanText(formData.get("businessName"));
   const contactName = cleanText(formData.get("contactName"));
 
@@ -61,7 +59,9 @@ export async function createLead(formData) {
     throw new Error("Business name is required.");
   }
 
-  const payload = {
+  const stage = cleanText(formData.get("stage")) || "new_lead";
+
+  return {
     organization_id: organizationId,
 
     // Legacy compatibility. Your existing leads table still has this column.
@@ -79,21 +79,53 @@ export async function createLead(formData) {
     form_name: cleanText(formData.get("formName")) || "Manual CRM Entry",
     form_id: cleanText(formData.get("formId")) || null,
     submission_id: cleanText(formData.get("submissionId")) || null,
-    raw_payload: {},
 
     service_interest:
       cleanText(formData.get("serviceInterest")) || "General inquiry",
-    stage: cleanText(formData.get("stage")) || "new_lead",
+    stage,
     priority: cleanText(formData.get("priority")) || "medium",
     estimated_value: cleanNumber(formData.get("estimatedValue")),
     next_follow_up: cleanDate(formData.get("nextFollowUp")),
 
     notes: cleanText(formData.get("notes")) || null,
-    status: "active",
+    status: stage === "archived" ? "archived" : "active",
     updated_at: new Date().toISOString(),
+  };
+}
+
+export async function createLead(formData) {
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const payload = {
+    ...buildLeadPayload(formData, organizationId),
+    raw_payload: {},
   };
 
   const { error } = await supabase.from("leads").insert(payload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/crm");
+}
+
+export async function updateLead(formData) {
+  const leadId = cleanText(formData.get("leadId"));
+
+  if (!leadId) {
+    throw new Error("Missing lead ID.");
+  }
+
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const payload = buildLeadPayload(formData, organizationId);
+
+  const { error } = await supabase
+    .from("leads")
+    .update(payload)
+    .eq("organization_id", organizationId)
+    .eq("id", leadId);
 
   if (error) {
     throw new Error(error.message);

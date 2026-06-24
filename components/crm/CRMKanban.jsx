@@ -8,6 +8,7 @@ import {
   createLead,
   deleteLead,
   moveLeadStage,
+  updateLead,
 } from "../../app/(dashboard)/crm/actions.js";
 
 function SearchIcon() {
@@ -283,7 +284,7 @@ function LeadActions({ lead }) {
   );
 }
 
-function LeadCard({ lead, onOpenDetails }) {
+function LeadCard({ lead, onOpenDetails, onOpenEdit }) {
   return (
     <article
       style={{
@@ -350,6 +351,7 @@ function LeadCard({ lead, onOpenDetails }) {
           type="button"
           variant="secondary"
           className="h-8 px-3 py-1 text-xs"
+          onClick={() => onOpenEdit(lead)}
         >
           Edit
         </Button>
@@ -358,7 +360,7 @@ function LeadCard({ lead, onOpenDetails }) {
   );
 }
 
-function CRMColumn({ stage, leads, onOpenDetails, onOpenCreate }) {
+function CRMColumn({ stage, leads, onOpenDetails, onOpenCreate, onOpenEdit }) {
   const totalValue = leads.reduce((total, lead) => total + lead.estimatedValue, 0);
 
   return (
@@ -404,6 +406,7 @@ function CRMColumn({ stage, leads, onOpenDetails, onOpenCreate }) {
               key={lead.id}
               lead={lead}
               onOpenDetails={onOpenDetails}
+              onOpenEdit={onOpenEdit}
             />
           ))
         ) : (
@@ -429,7 +432,7 @@ function CRMColumn({ stage, leads, onOpenDetails, onOpenCreate }) {
   );
 }
 
-function LeadDetailsModal({ lead, onClose }) {
+function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
   if (!lead) return null;
 
   return (
@@ -462,7 +465,11 @@ function LeadDetailsModal({ lead, onClose }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onOpenEdit(lead)}
+            >
               Edit
             </Button>
 
@@ -518,29 +525,48 @@ function LeadDetailsModal({ lead, onClose }) {
 
         <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
           <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Future Form Payload
+            Form Payload
           </p>
 
           <p className="mt-3 text-sm leading-6 text-slate-300">
-            This lead structure is prepared to store raw form submissions,
-            source names, form IDs, and submission IDs. We will surface that data
-            here once live forms are connected.
+            This lead can store source names, form IDs, submission IDs, and raw
+            form payload data. We will surface live form payloads here once the
+            forms are connected.
           </p>
         </div>
       </section>
     </div>
   );
 }
-function LeadFormModal({ defaultStage, onClose }) {
+
+function emptyField(value, fallback = "") {
+  if (
+    value === "No email" ||
+    value === "No phone" ||
+    value === "No location" ||
+    value === "No contact added" ||
+    value === "No follow-up" ||
+    value === "No notes added yet."
+  ) {
+    return fallback;
+  }
+
+  return value || fallback;
+}
+
+function LeadFormModal({ defaultStage, lead, onClose }) {
   if (!defaultStage) {
     return null;
   }
+
+  const isEditing = Boolean(lead?.id);
+  const action = isEditing ? updateLead : createLead;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
       <button
         type="button"
-        aria-label="Close new lead form"
+        aria-label={isEditing ? "Close edit lead form" : "Close new lead form"}
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -553,12 +579,13 @@ function LeadFormModal({ defaultStage, onClose }) {
             </p>
 
             <h2 className="mt-2 text-2xl font-black text-white">
-              Add New Lead
+              {isEditing ? "Edit Lead" : "Add New Lead"}
             </h2>
 
             <p className="mt-1 text-sm text-slate-400">
-              Add a manual lead now. Later, your forms will feed this same data
-              structure automatically.
+              {isEditing
+                ? "Update lead details, stage, value, priority, and next follow-up."
+                : "Add a manual lead now. Later, your forms will feed this same data structure automatically."}
             </p>
           </div>
 
@@ -568,20 +595,37 @@ function LeadFormModal({ defaultStage, onClose }) {
         </div>
 
         <form
-          action={createLead}
+          action={action}
           onSubmit={() => {
             onClose();
           }}
           className="space-y-5"
         >
-          <input type="hidden" name="formSource" value="Manual Entry" />
-          <input type="hidden" name="formName" value="Manual CRM Entry" />
+          {isEditing && <input type="hidden" name="leadId" value={lead.id} />}
+
+          <input
+            type="hidden"
+            name="formSource"
+            value={emptyField(lead?.formSource, "Manual Entry")}
+          />
+          <input
+            type="hidden"
+            name="formName"
+            value={emptyField(lead?.formName, "Manual CRM Entry")}
+          />
+          <input type="hidden" name="formId" value={lead?.formId || ""} />
+          <input
+            type="hidden"
+            name="submissionId"
+            value={lead?.submissionId || ""}
+          />
 
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Business Name" required>
               <input
                 name="businessName"
                 required
+                defaultValue={emptyField(lead?.businessName)}
                 placeholder="Business or organization name"
                 className="dvs-form-input"
               />
@@ -590,6 +634,7 @@ function LeadFormModal({ defaultStage, onClose }) {
             <FormField label="Contact Name">
               <input
                 name="contactName"
+                defaultValue={emptyField(lead?.contactName)}
                 placeholder="Primary contact name"
                 className="dvs-form-input"
               />
@@ -599,6 +644,7 @@ function LeadFormModal({ defaultStage, onClose }) {
               <input
                 name="email"
                 type="email"
+                defaultValue={emptyField(lead?.email)}
                 placeholder="email@example.com"
                 className="dvs-form-input"
               />
@@ -607,6 +653,7 @@ function LeadFormModal({ defaultStage, onClose }) {
             <FormField label="Phone">
               <input
                 name="phone"
+                defaultValue={emptyField(lead?.phone)}
                 placeholder="(555) 000-0000"
                 className="dvs-form-input"
               />
@@ -615,6 +662,7 @@ function LeadFormModal({ defaultStage, onClose }) {
             <FormField label="Website">
               <input
                 name="website"
+                defaultValue={emptyField(lead?.website)}
                 placeholder="example.com"
                 className="dvs-form-input"
               />
@@ -623,13 +671,18 @@ function LeadFormModal({ defaultStage, onClose }) {
             <FormField label="Location">
               <input
                 name="location"
+                defaultValue={emptyField(lead?.location)}
                 placeholder="City, State"
                 className="dvs-form-input"
               />
             </FormField>
 
             <FormField label="Lead Source">
-              <select name="source" defaultValue="Manual" className="dvs-form-input">
+              <select
+                name="source"
+                defaultValue={emptyField(lead?.source, "Manual")}
+                className="dvs-form-input"
+              >
                 <option value="Manual">Manual</option>
                 <option value="Website Form">Website Form</option>
                 <option value="DVS Intake">DVS Intake</option>
@@ -645,7 +698,10 @@ function LeadFormModal({ defaultStage, onClose }) {
             <FormField label="Service Interest">
               <select
                 name="serviceInterest"
-                defaultValue="Website / Web Development"
+                defaultValue={emptyField(
+                  lead?.serviceInterest,
+                  "Website / Web Development"
+                )}
                 className="dvs-form-input"
               >
                 <option value="Website / Web Development">
@@ -670,7 +726,7 @@ function LeadFormModal({ defaultStage, onClose }) {
             <FormField label="Stage">
               <select
                 name="stage"
-                defaultValue={defaultStage}
+                defaultValue={lead?.rawStage || defaultStage}
                 className="dvs-form-input"
               >
                 {leadStages.map((stage) => (
@@ -682,7 +738,11 @@ function LeadFormModal({ defaultStage, onClose }) {
             </FormField>
 
             <FormField label="Priority">
-              <select name="priority" defaultValue="medium" className="dvs-form-input">
+              <select
+                name="priority"
+                defaultValue={lead?.rawPriority || "medium"}
+                className="dvs-form-input"
+              >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -695,13 +755,19 @@ function LeadFormModal({ defaultStage, onClose }) {
                 type="number"
                 min="0"
                 step="50"
-                placeholder="Estimated Project Value"
+                defaultValue={lead?.estimatedValue || ""}
+                placeholder="Estimated project value"
                 className="dvs-form-input"
               />
             </FormField>
 
             <FormField label="Next Follow-Up">
-              <input name="nextFollowUp" type="date" className="dvs-form-input" />
+              <input
+                name="nextFollowUp"
+                type="date"
+                defaultValue={lead?.nextFollowUp || ""}
+                className="dvs-form-input"
+              />
             </FormField>
           </div>
 
@@ -709,7 +775,8 @@ function LeadFormModal({ defaultStage, onClose }) {
             <textarea
               name="notes"
               rows="4"
-              placeholder="Additional details..."
+              defaultValue={emptyField(lead?.notes)}
+              placeholder="Add lead notes, needs, next steps, or form details..."
               className="dvs-form-input resize-none"
             />
           </FormField>
@@ -719,7 +786,9 @@ function LeadFormModal({ defaultStage, onClose }) {
               Cancel
             </Button>
 
-            <Button type="submit">Save Lead</Button>
+            <Button type="submit">
+              {isEditing ? "Save Changes" : "Save Lead"}
+            </Button>
           </div>
         </form>
       </section>
@@ -768,11 +837,12 @@ function InfoBlock({ label, children, className = "" }) {
 
 export default function CRMKanban({ leads = [], summary }) {
   const [detailsLead, setDetailsLead] = useState(null);
-  const [leadFormStage, setLeadFormStage] = useState("");
-  const [searchValue, setSearchValue] = useState("");
-  const [serviceValue, setServiceValue] = useState("all");
-  const [sourceValue, setSourceValue] = useState("all");
- 
+const [editingLead, setEditingLead] = useState(null);
+const [leadFormStage, setLeadFormStage] = useState("");
+const [searchValue, setSearchValue] = useState("");
+const [serviceValue, setServiceValue] = useState("all");
+const [sourceValue, setSourceValue] = useState("all");
+
   useEffect(() => {
   function handleOpenNewLead() {
     setLeadFormStage("new_lead");
@@ -831,7 +901,20 @@ export default function CRMKanban({ leads = [], summary }) {
   }
 
   function openCreateLead(stageKey = "new_lead") {
+  setDetailsLead(null);
+  setEditingLead(null);
   setLeadFormStage(stageKey);
+}
+
+function openEditLead(lead) {
+  setDetailsLead(null);
+  setEditingLead(lead);
+  setLeadFormStage(lead.rawStage || "new_lead");
+}
+
+function closeLeadForm() {
+  setEditingLead(null);
+  setLeadFormStage("");
 }
 
   return (
@@ -860,6 +943,7 @@ export default function CRMKanban({ leads = [], summary }) {
   leads={getStageLeads(stage.key)}
   onOpenDetails={setDetailsLead}
   onOpenCreate={openCreateLead}
+  onOpenEdit={openEditLead}
 />
       ))}
     </div>
@@ -870,11 +954,13 @@ export default function CRMKanban({ leads = [], summary }) {
       <LeadDetailsModal
   lead={detailsLead}
   onClose={() => setDetailsLead(null)}
+  onOpenEdit={openEditLead}
 />
 
 <LeadFormModal
   defaultStage={leadFormStage}
-  onClose={() => setLeadFormStage("")}
+  lead={editingLead}
+  onClose={closeLeadForm}
 />
     </>
   );
