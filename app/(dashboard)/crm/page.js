@@ -1,19 +1,51 @@
-import ComingSoonPage from "../../../components/dashboard/ComingSoonPage.jsx";
+import { redirect } from "next/navigation";
+import PageHeader from "../../../components/ui/PageHeader.jsx";
+import Button from "../../../components/ui/Button.jsx";
+import CRMKanban from "../../../components/crm/CRMKanban.jsx";
+import { createClient } from "../../../utils/supabase/server.js";
+import { getCurrentWorkspace } from "../../../lib/workspace.js";
+import { getLeadsData } from "../../../lib/leadsData.js";
 
-export default function CRMPage() {
+export default async function CRMPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const workspace = await getCurrentWorkspace(supabase, user);
+
+  if (!workspace?.organization?.id) {
+    redirect("/login");
+  }
+
+  const { leads, summary } = await getLeadsData(
+    supabase,
+    workspace.organization.id
+  );
+
   return (
-    <ComingSoonPage
-      eyebrow="CRM"
-      title="CRM Pipeline"
-      description="Track leads, opportunities, follow-ups, proposals, and close status from one clean sales pipeline."
-      items={[
-        "Lead pipeline by stage",
-        "Follow-up reminders",
-        "Proposal status",
-        "Source tracking",
-        "Client conversion history",
-        "Activity log",
-      ]}
-    />
+    <section>
+      <PageHeader
+        eyebrow="CRM"
+        title="Sales Pipeline"
+        description="Track leads, follow-ups, service interest, deal value, and close status from one clean pipeline."
+        actions={
+          <>
+            <Button variant="secondary" className="whitespace-nowrap">
+              Export
+            </Button>
+
+            <Button className="whitespace-nowrap">+ New Lead</Button>
+          </>
+        }
+      />
+
+      <CRMKanban leads={leads} summary={summary} />
+    </section>
   );
 }
