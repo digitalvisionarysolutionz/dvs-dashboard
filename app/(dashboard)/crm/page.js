@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
-import Button from "../../../components/ui/Button.jsx";
+import CRMHeaderActions from "../../../components/crm/CRMHeaderActions.jsx";
 import CRMKanban from "../../../components/crm/CRMKanban.jsx";
 import { createClient } from "../../../utils/supabase/server.js";
 import { getCurrentWorkspace } from "../../../lib/workspace.js";
@@ -31,18 +31,10 @@ export default async function CRMPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="CRM"
+        eyebrow="Customer Relations Management"
         title="Sales Pipeline"
         description="Track leads, follow-ups, service interest, deal value, and close status from one clean pipeline."
-        actions={
-          <>
-            <Button variant="secondary" className="whitespace-nowrap">
-              Export
-            </Button>
-
-            <Button className="whitespace-nowrap">+ New Lead</Button>
-          </>
-        }
+        actions={<CRMHeaderActions />}
       />
 
       <CRMKanban leads={leads} summary={summary} />

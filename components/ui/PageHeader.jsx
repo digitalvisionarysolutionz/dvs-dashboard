@@ -10,7 +10,7 @@ export default function PageHeader({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
         <div className="min-w-0">
           {eyebrow && (
-            <div className="mb-5 inline-flex flex-col">
+            <div className="mb-5 inline-flex flex-col items-center">
               <p className="text-sm font-black uppercase tracking-[0.38em] text-[var(--app-accent)]">
                 {eyebrow}
               </p>

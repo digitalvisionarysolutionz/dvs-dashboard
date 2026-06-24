@@ -1,10 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "../ui/Button.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
 import { leadStages } from "../../lib/leadsData.js";
-import { deleteLead, moveLeadStage } from "../../app/(dashboard)/crm/actions.js";
+import {
+  createLead,
+  deleteLead,
+  moveLeadStage,
+} from "../../app/(dashboard)/crm/actions.js";
 
 function SearchIcon() {
   return (
@@ -354,7 +358,7 @@ function LeadCard({ lead, onOpenDetails }) {
   );
 }
 
-function CRMColumn({ stage, leads, onOpenDetails }) {
+function CRMColumn({ stage, leads, onOpenDetails, onOpenCreate }) {
   const totalValue = leads.reduce((total, lead) => total + lead.estimatedValue, 0);
 
   return (
@@ -416,6 +420,7 @@ function CRMColumn({ stage, leads, onOpenDetails }) {
 
       <button
         type="button"
+        onClick={() => onOpenCreate(stage.key)}
         className="mt-4 rounded-[var(--radius-sm)] border border-transparent px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-accent)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-accent-soft)]"
       >
         + Add Lead
@@ -526,6 +531,214 @@ function LeadDetailsModal({ lead, onClose }) {
     </div>
   );
 }
+function LeadFormModal({ defaultStage, onClose }) {
+  if (!defaultStage) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        aria-label="Close new lead form"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <section className="relative z-10 max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
+        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--app-border)] pb-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
+              CRM Lead
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Add New Lead
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Add a manual lead now. Later, your forms will feed this same data
+              structure automatically.
+            </p>
+          </div>
+
+          <Button type="button" variant="ghost" onClick={onClose}>
+            ✕
+          </Button>
+        </div>
+
+        <form
+          action={createLead}
+          onSubmit={() => {
+            onClose();
+          }}
+          className="space-y-5"
+        >
+          <input type="hidden" name="formSource" value="Manual Entry" />
+          <input type="hidden" name="formName" value="Manual CRM Entry" />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label="Business Name" required>
+              <input
+                name="businessName"
+                required
+                placeholder="Business or organization name"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Contact Name">
+              <input
+                name="contactName"
+                placeholder="Primary contact name"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Email">
+              <input
+                name="email"
+                type="email"
+                placeholder="email@example.com"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Phone">
+              <input
+                name="phone"
+                placeholder="(555) 000-0000"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Website">
+              <input
+                name="website"
+                placeholder="example.com"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Location">
+              <input
+                name="location"
+                placeholder="City, State"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Lead Source">
+              <select name="source" defaultValue="Manual" className="dvs-form-input">
+                <option value="Manual">Manual</option>
+                <option value="Website Form">Website Form</option>
+                <option value="DVS Intake">DVS Intake</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Referral">Referral</option>
+                <option value="Partner">Partner</option>
+                <option value="Cold Outreach">Cold Outreach</option>
+                <option value="Event">Event</option>
+              </select>
+            </FormField>
+
+            <FormField label="Service Interest">
+              <select
+                name="serviceInterest"
+                defaultValue="Website / Web Development"
+                className="dvs-form-input"
+              >
+                <option value="Website / Web Development">
+                  Website / Web Development
+                </option>
+                <option value="CRM / Dashboard System">
+                  CRM / Dashboard System
+                </option>
+                <option value="Automation">Automation</option>
+                <option value="Lead Generation">Lead Generation</option>
+                <option value="Photo / Video">Photo / Video</option>
+                <option value="SEO / Google Business Profile">
+                  SEO / Google Business Profile
+                </option>
+                <option value="Social Media / Content">
+                  Social Media / Content
+                </option>
+                <option value="General inquiry">General inquiry</option>
+              </select>
+            </FormField>
+
+            <FormField label="Stage">
+              <select
+                name="stage"
+                defaultValue={defaultStage}
+                className="dvs-form-input"
+              >
+                {leadStages.map((stage) => (
+                  <option key={stage.key} value={stage.key}>
+                    {stage.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Priority">
+              <select name="priority" defaultValue="medium" className="dvs-form-input">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </FormField>
+
+            <FormField label="Estimated Value">
+              <input
+                name="estimatedValue"
+                type="number"
+                min="0"
+                step="50"
+                placeholder="Estimated Project Value"
+                className="dvs-form-input"
+              />
+            </FormField>
+
+            <FormField label="Next Follow-Up">
+              <input name="nextFollowUp" type="date" className="dvs-form-input" />
+            </FormField>
+          </div>
+
+          <FormField label="Notes">
+            <textarea
+              name="notes"
+              rows="4"
+              placeholder="Additional details..."
+              className="dvs-form-input resize-none"
+            />
+          </FormField>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-[var(--app-border)] pt-5 sm:flex-row sm:items-center sm:justify-end">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+
+            <Button type="submit">Save Lead</Button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function FormField({ label, required = false, children }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">
+        {label}
+        {required && <span className="text-[var(--app-accent)]"> *</span>}
+      </span>
+
+      {children}
+    </label>
+  );
+}
 
 function InfoTile({ label, value }) {
   return (
@@ -555,9 +768,22 @@ function InfoBlock({ label, children, className = "" }) {
 
 export default function CRMKanban({ leads = [], summary }) {
   const [detailsLead, setDetailsLead] = useState(null);
+  const [leadFormStage, setLeadFormStage] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [serviceValue, setServiceValue] = useState("all");
   const [sourceValue, setSourceValue] = useState("all");
+ 
+  useEffect(() => {
+  function handleOpenNewLead() {
+    setLeadFormStage("new_lead");
+  }
+
+  window.addEventListener("dvs-open-new-lead", handleOpenNewLead);
+
+  return () => {
+    window.removeEventListener("dvs-open-new-lead", handleOpenNewLead);
+  };
+}, []);
 
   const services = useMemo(() => {
     return [...new Set(leads.map((lead) => lead.serviceInterest).filter(Boolean))];
@@ -604,6 +830,10 @@ export default function CRMKanban({ leads = [], summary }) {
     return visibleLeads.filter((lead) => lead.rawStage === stageKey);
   }
 
+  function openCreateLead(stageKey = "new_lead") {
+  setLeadFormStage(stageKey);
+}
+
   return (
     <>
       <SummaryCards summary={summary} />
@@ -620,29 +850,32 @@ export default function CRMKanban({ leads = [], summary }) {
     sources={sources}
   />
 
-  <div className="mb-3 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-widest text-[var(--app-text-soft)]">
-    <span>Pipeline Board</span>
-    <span>Scroll sideways to view more stages →</span>
-  </div>
 
   <div className="dvs-kanban-scroll w-full max-w-full overflow-x-auto overscroll-x-contain pb-4">
     <div className="flex min-w-max flex-nowrap gap-4 pr-8">
       {leadStages.map((stage) => (
         <CRMColumn
-          key={stage.key}
-          stage={stage}
-          leads={getStageLeads(stage.key)}
-          onOpenDetails={setDetailsLead}
-        />
+  key={stage.key}
+  stage={stage}
+  leads={getStageLeads(stage.key)}
+  onOpenDetails={setDetailsLead}
+  onOpenCreate={openCreateLead}
+/>
       ))}
     </div>
   </div>
 </section>
 
+
       <LeadDetailsModal
-        lead={detailsLead}
-        onClose={() => setDetailsLead(null)}
-      />
+  lead={detailsLead}
+  onClose={() => setDetailsLead(null)}
+/>
+
+<LeadFormModal
+  defaultStage={leadFormStage}
+  onClose={() => setLeadFormStage("")}
+/>
     </>
   );
 }

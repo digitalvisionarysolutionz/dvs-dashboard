@@ -162,3 +162,26 @@ a {
 .dvs-kanban-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(92, 244, 236, 0.95);
 }
+.dvs-form-input {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--app-border);
+  background: #050b13;
+  padding: 0.78rem 0.9rem;
+  color: var(--app-text);
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.dvs-form-input::placeholder {
+  color: var(--app-text-soft);
+}
+
+.dvs-form-input:focus {
+  border-color: var(--app-border-strong);
+  background: #071018;
+  box-shadow: 0 0 0 3px rgba(92, 244, 236, 0.08);
+}
