@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
-import Button from "../../../components/ui/Button.jsx";
+import ClientsHeaderActions from "../../../components/clients/ClientsHeaderActions.jsx";
 import ClientsList from "../../../components/clients/ClientsList.jsx";
 import { createClient } from "../../../utils/supabase/server.js";
 import { getCurrentWorkspace } from "../../../lib/workspace.js";
@@ -31,12 +31,7 @@ export default async function ClientsPage() {
         eyebrow="Clients"
         title="Client Hub"
         description="Manage client profiles, contact info, service notes, linked projects, and account history."
-        actions={
-          <>
-            <Button variant="secondary">Export</Button>
-            <Button>+ New Client</Button>
-          </>
-        }
+        actions={<ClientsHeaderActions />}
       />
 
       <ClientsList clients={clients} />

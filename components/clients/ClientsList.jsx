@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Button from "../ui/Button.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
 import {
   archiveSelectedClients,
+  createClientRecord,
   deleteSelectedClients,
   moveSelectedClientsToActive,
+  updateClientRecord,
   archiveSingleClient,
   deleteSingleClient,
   moveSingleClientToActive,
@@ -232,8 +234,56 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
   );
 }
 
-function RowActions({ client, onOpenDetails }) {
+function RowActions({ client, onOpenDetails, onOpenEdit }) {
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({
+    top: 0,
+    left: 0,
+    placement: "bottom",
+  });
+
+  const buttonRef = useRef(null);
+
+  function toggleMenu() {
+    if (!buttonRef.current) {
+      setOpen((current) => !current);
+      return;
+    }
+
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const menuHeight = 120;
+    const menuWidth = 160;
+    const spaceBelow = window.innerHeight - buttonRect.bottom;
+    const shouldOpenUp = spaceBelow < menuHeight + 24;
+
+    setMenuPosition({
+      top: shouldOpenUp
+        ? buttonRect.top - menuHeight - 8
+        : buttonRect.bottom + 8,
+      left: Math.max(12, buttonRect.right - menuWidth),
+      placement: shouldOpenUp ? "top" : "bottom",
+    });
+
+    setOpen((current) => !current);
+  }
+
+  useEffect(() => {
+    function closeMenu() {
+      setOpen(false);
+    }
+
+    if (!open) {
+      return;
+    }
+
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("resize", closeMenu);
+
+    return () => {
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [open]);
 
   return (
     <div className="flex items-center justify-start gap-2 lg:justify-end">
@@ -246,73 +296,100 @@ function RowActions({ client, onOpenDetails }) {
         View
       </Button>
 
-      <Button type="button" variant="secondary" size="sm">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => onOpenEdit(client)}
+      >
         Edit
       </Button>
 
       <div className="relative">
         <button
+          ref={buttonRef}
           type="button"
           aria-label={`More actions for ${client.businessName}`}
-          onClick={() => setOpen((current) => !current)}
+          onClick={toggleMenu}
           className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--app-border)] bg-[#071018] text-[var(--app-text-muted)] transition hover:border-[var(--app-border-strong)] hover:text-white"
         >
           <DotsIcon />
         </button>
 
         {open && (
-          <div className="absolute right-0 z-30 mt-2 w-40 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
-            {client.isArchived ? (
-              <form action={moveSingleClientToActive}>
+          <>
+            <button
+              type="button"
+              aria-label="Close client actions"
+              className="fixed inset-0 z-[80] cursor-default bg-transparent"
+              onClick={() => setOpen(false)}
+            />
+
+            <div
+              className="fixed z-[90] w-40 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]"
+              style={{
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
+              }}
+            >
+              {client.isArchived ? (
+                <form action={moveSingleClientToActive}>
+                  <input type="hidden" name="clientId" value={client.id} />
+
+                  <button
+                    type="submit"
+                    className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  >
+                    Mark Active
+                  </button>
+                </form>
+              ) : (
+                <form action={archiveSingleClient}>
+                  <input type="hidden" name="clientId" value={client.id} />
+
+                  <button
+                    type="submit"
+                    className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  >
+                    Archive
+                  </button>
+                </form>
+              )}
+
+              <form action={deleteSingleClient}>
                 <input type="hidden" name="clientId" value={client.id} />
 
                 <button
                   type="submit"
-                  className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  onClick={(event) => {
+                    if (
+                      !window.confirm(
+                        "Delete this client permanently? This cannot be undone."
+                      )
+                    ) {
+                      event.preventDefault();
+                    }
+                  }}
+                  className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-red-200 hover:bg-red-400/10"
                 >
-                  Mark Active
+                  Delete
                 </button>
               </form>
-            ) : (
-              <form action={archiveSingleClient}>
-                <input type="hidden" name="clientId" value={client.id} />
-
-                <button
-                  type="submit"
-                  className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
-                >
-                  Archive
-                </button>
-              </form>
-            )}
-
-            <form action={deleteSingleClient}>
-              <input type="hidden" name="clientId" value={client.id} />
-
-              <button
-                type="submit"
-                onClick={(event) => {
-                  if (
-                    !window.confirm(
-                      "Delete this client permanently? This cannot be undone."
-                    )
-                  ) {
-                    event.preventDefault();
-                  }
-                }}
-                className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-red-200 hover:bg-red-400/10"
-              >
-                Delete
-              </button>
-            </form>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function ClientRow({ client, isSelected, onToggleSelected, onOpenDetails }) {
+function ClientRow({
+  client,
+  isSelected,
+  onToggleSelected,
+  onOpenDetails,
+  onOpenEdit,
+}) {
   return (
     <article
       className={`grid gap-4 border-b border-[var(--app-border)] px-4 py-4 transition last:border-b-0 hover:bg-white/[0.035] lg:grid-cols-[minmax(0,1.6fr)_minmax(220px,0.9fr)_auto] lg:items-center ${
@@ -361,7 +438,11 @@ function ClientRow({ client, isSelected, onToggleSelected, onOpenDetails }) {
         </p>
       </div>
 
-      <RowActions client={client} onOpenDetails={onOpenDetails} />
+      <RowActions
+  client={client}
+  onOpenDetails={onOpenDetails}
+  onOpenEdit={onOpenEdit}
+/>
     </article>
   );
 }
@@ -371,18 +452,21 @@ function ClientDirectory({
   selectedIds,
   onToggleSelected,
   onOpenDetails,
+  onOpenEdit,
 }) {
+
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-[#050a10]">
       {clients.length > 0 ? (
         clients.map((client) => (
           <ClientRow
-            key={client.id}
-            client={client}
-            isSelected={selectedIds.includes(client.id)}
-            onToggleSelected={onToggleSelected}
-            onOpenDetails={onOpenDetails}
-          />
+  key={client.id}
+  client={client}
+  isSelected={selectedIds.includes(client.id)}
+  onToggleSelected={onToggleSelected}
+  onOpenDetails={onOpenDetails}
+  onOpenEdit={onOpenEdit}
+/>
         ))
       ) : (
         <div className="p-8 text-center text-sm text-[var(--app-text-muted)]">
@@ -393,7 +477,7 @@ function ClientDirectory({
   );
 }
 
-function ClientDetailsModal({ client, onClose }) {
+function ClientDetailsModal({ client, onClose, onOpenEdit }) {
   if (!client) {
     return null;
   }
@@ -428,7 +512,11 @@ function ClientDetailsModal({ client, onClose }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onOpenEdit(client)}
+            >
               Edit
             </Button>
 
@@ -495,12 +583,204 @@ function ClientDetailsModal({ client, onClose }) {
   );
 }
 
+function emptyField(value, fallback = "") {
+  if (
+    value === "No email" ||
+    value === "No phone" ||
+    value === "No notes added yet." ||
+    value === "Unnamed Client"
+  ) {
+    return fallback;
+  }
+
+  return value || fallback;
+}
+
+function ClientFormModal({ open, client, onClose }) {
+  if (!open) {
+    return null;
+  }
+
+  const isEditing = Boolean(client?.id);
+  const action = isEditing ? updateClientRecord : createClientRecord;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        aria-label={isEditing ? "Close edit client form" : "Close new client form"}
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <section className="relative z-10 flex h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
+        <div className="shrink-0 border-b border-[var(--app-border)] p-5">
+  <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
+              Client Profile
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-white">
+              {isEditing ? "Edit Client" : "New Client"}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              {isEditing
+                ? "Update client contact info, status, notes, and account details."
+                : "Create a client profile that can be linked to projects, CRM leads, invoices, and future portal activity."}
+            </p>
+          </div>
+
+          <Button type="button" variant="ghost" onClick={onClose}>
+  ✕
+</Button>
+  </div>
+</div>
+
+<form
+  action={action}
+  onSubmit={() => {
+    onClose();
+  }}
+  className="flex min-h-0 flex-1 flex-col"
+>
+  {isEditing && <input type="hidden" name="clientId" value={client.id} />}
+
+  <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField label="Business Name" required>
+        <input
+          name="businessName"
+          required
+          defaultValue={emptyField(client?.businessName)}
+          placeholder="Business or organization name"
+          className="dvs-form-input"
+        />
+      </FormField>
+
+      <FormField label="Contact Name">
+        <input
+          name="contactName"
+          defaultValue={emptyField(client?.name)}
+          placeholder="Primary contact name"
+          className="dvs-form-input"
+        />
+      </FormField>
+
+      <FormField label="Email">
+        <input
+          name="email"
+          type="email"
+          defaultValue={emptyField(client?.email)}
+          placeholder="email@example.com"
+          className="dvs-form-input"
+        />
+      </FormField>
+
+      <FormField label="Phone">
+        <input
+          name="phone"
+          defaultValue={emptyField(client?.phone)}
+          placeholder="(555) 000-0000"
+          className="dvs-form-input"
+        />
+      </FormField>
+
+      <FormField label="Website">
+        <input
+          name="website"
+          defaultValue={emptyField(client?.website)}
+          placeholder="example.com"
+          className="dvs-form-input"
+        />
+      </FormField>
+
+      <FormField label="Status">
+        <select
+          name="status"
+          defaultValue={client?.rawStatus || "active"}
+          className="dvs-form-input"
+        >
+          <option value="lead">Lead</option>
+          <option value="active">Active</option>
+          <option value="past">Past</option>
+          <option value="archived">Archived</option>
+        </select>
+      </FormField>
+
+      <FormField label="Logo URL">
+        <input
+          name="logoUrl"
+          defaultValue={client?.logoUrl || ""}
+          placeholder="https://example.com/logo.png"
+          className="dvs-form-input"
+        />
+      </FormField>
+    </div>
+
+    <FormField label="Notes">
+      <textarea
+        name="notes"
+        rows="4"
+        defaultValue={emptyField(client?.notes)}
+        placeholder="Add account notes, preferences, context, or next steps..."
+        className="dvs-form-input resize-none"
+      />
+    </FormField>
+  </div>
+
+  <div className="shrink-0 border-t border-[var(--app-border)] bg-[#071018]/95 p-5 backdrop-blur">
+    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <Button type="button" variant="secondary" onClick={onClose}>
+        Cancel
+      </Button>
+
+      <Button type="submit">
+        {isEditing ? "Save Changes" : "Save Client"}
+      </Button>
+    </div>
+  </div>
+</form>
+      </section>
+    </div>
+  );
+}
+
+function FormField({ label, required = false, children }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">
+        {label}
+        {required && <span className="text-[var(--app-accent)]"> *</span>}
+      </span>
+
+      {children}
+    </label>
+  );
+}
+
 export default function ClientsList({ clients = [] }) {
   const [activeTab, setActiveTab] = useState("active");
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [detailsClient, setDetailsClient] = useState(null);
-  const [searchValue, setSearchValue] = useState("");
-  const [statusValue, setStatusValue] = useState("all");
+const [selectedIds, setSelectedIds] = useState([]);
+const [detailsClient, setDetailsClient] = useState(null);
+const [editingClient, setEditingClient] = useState(null);
+const [clientFormOpen, setClientFormOpen] = useState(false);
+const [searchValue, setSearchValue] = useState("");
+const [statusValue, setStatusValue] = useState("all");
+useEffect(() => {
+  function handleOpenNewClient() {
+    setDetailsClient(null);
+    setEditingClient(null);
+    setClientFormOpen(true);
+  }
+
+  window.addEventListener("dvs-open-new-client", handleOpenNewClient);
+
+  return () => {
+    window.removeEventListener("dvs-open-new-client", handleOpenNewClient);
+  };
+}, []);
 
   const counts = useMemo(
     () => ({
@@ -548,6 +828,16 @@ export default function ClientsList({ clients = [] }) {
         : [...currentIds, clientId]
     );
   }
+function openEditClient(client) {
+  setDetailsClient(null);
+  setEditingClient(client);
+  setClientFormOpen(true);
+}
+
+function closeClientForm() {
+  setEditingClient(null);
+  setClientFormOpen(false);
+}
 
   function clearSelection() {
     setSelectedIds([]);
@@ -577,11 +867,12 @@ export default function ClientsList({ clients = [] }) {
           />
 
           <ClientDirectory
-            clients={visibleClients}
-            selectedIds={selectedIds}
-            onToggleSelected={handleToggleSelected}
-            onOpenDetails={setDetailsClient}
-          />
+  clients={visibleClients}
+  selectedIds={selectedIds}
+  onToggleSelected={handleToggleSelected}
+  onOpenDetails={setDetailsClient}
+  onOpenEdit={openEditClient}
+/>
 
           <div className="text-sm text-[var(--app-text-muted)]">
             Showing {visibleClients.length} of{" "}
@@ -591,9 +882,16 @@ export default function ClientsList({ clients = [] }) {
       </div>
 
       <ClientDetailsModal
-        client={detailsClient}
-        onClose={() => setDetailsClient(null)}
-      />
+  client={detailsClient}
+  onClose={() => setDetailsClient(null)}
+  onOpenEdit={openEditClient}
+/>
+
+<ClientFormModal
+  open={clientFormOpen}
+  client={editingClient}
+  onClose={closeClientForm}
+/>
     </>
   );
 }

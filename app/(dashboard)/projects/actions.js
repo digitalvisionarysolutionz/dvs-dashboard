@@ -100,6 +100,105 @@ async function deleteProjects(projectIds) {
   revalidatePath("/");
 }
 
+function cleanText(value) {
+  return String(value || "").trim();
+}
+
+function cleanNumber(value) {
+  const nextValue = Number(value || 0);
+
+  if (Number.isNaN(nextValue)) {
+    return 0;
+  }
+
+  return nextValue;
+}
+
+function cleanDate(value) {
+  const nextValue = cleanText(value);
+
+  if (!nextValue) {
+    return null;
+  }
+
+  return nextValue;
+}
+
+export async function createProject(formData) {
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const projectName = cleanText(formData.get("projectName"));
+  const existingClientId = cleanText(formData.get("clientId"));
+  const newClientName = cleanText(formData.get("newClientName"));
+
+  if (!projectName) {
+    throw new Error("Project name is required.");
+  }
+
+  let clientId = existingClientId || null;
+
+  if (newClientName) {
+    const { data: existingClient, error: existingError } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("business_name", newClientName)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new Error(existingError.message);
+    }
+
+    if (existingClient?.id) {
+      clientId = existingClient.id;
+    } else {
+      const { data: newClient, error: clientError } = await supabase
+        .from("clients")
+        .insert({
+          organization_id: organizationId,
+          name: newClientName,
+          business_name: newClientName,
+          status: "active",
+          notes: "Created from new project modal.",
+        })
+        .select("id")
+        .single();
+
+      if (clientError) {
+        throw new Error(clientError.message);
+      }
+
+      clientId = newClient.id;
+    }
+  }
+
+  const status = cleanText(formData.get("status")) || "in_progress";
+
+  const { error } = await supabase.from("projects").insert({
+    organization_id: organizationId,
+    client_id: clientId,
+    name: projectName,
+    description:
+      cleanText(formData.get("description")) ||
+      "No project description added yet.",
+    notes: cleanText(formData.get("notes")) || null,
+    status,
+    priority: cleanText(formData.get("priority")) || "medium",
+    progress: cleanNumber(formData.get("progress")),
+    due_date: cleanDate(formData.get("dueDate")),
+    completed_at: status === "completed" ? new Date().toISOString() : null,
+    archived_at: status === "archived" ? new Date().toISOString() : null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/projects");
+  revalidatePath("/clients");
+}
+
 export async function completeSelectedProjects(formData) {
   const projectIds = getIdsFromFormData(formData);
 
