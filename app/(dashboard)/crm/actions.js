@@ -185,6 +185,122 @@ export async function restoreLead(formData) {
 
   revalidatePath("/crm");
 }
+
+export async function convertLeadToClient(formData) {
+  const leadId = cleanText(formData.get("leadId"));
+
+  if (!leadId) {
+    throw new Error("Missing lead ID.");
+  }
+
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const { data: lead, error: leadError } = await supabase
+    .from("leads")
+    .select(
+      `
+      id,
+      business_name,
+      contact_name,
+      email,
+      phone,
+      website,
+      notes,
+      client_id
+    `
+    )
+    .eq("organization_id", organizationId)
+    .eq("id", leadId)
+    .single();
+
+  if (leadError) {
+    throw new Error(leadError.message);
+  }
+
+  if (!lead) {
+    throw new Error("Lead not found.");
+  }
+
+  if (lead.client_id) {
+    const { error: updateExistingError } = await supabase
+      .from("leads")
+      .update({
+        stage: "won",
+        status: "active",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("organization_id", organizationId)
+      .eq("id", leadId);
+
+    if (updateExistingError) {
+      throw new Error(updateExistingError.message);
+    }
+
+    revalidatePath("/crm");
+    revalidatePath("/clients");
+    return;
+  }
+
+  const businessName = cleanText(lead.business_name) || "Unnamed Business";
+  const contactName = cleanText(lead.contact_name) || businessName;
+
+  const { data: existingClient, error: existingError } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("business_name", businessName)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  let clientId = existingClient?.id;
+
+  if (!clientId) {
+    const { data: newClient, error: clientError } = await supabase
+      .from("clients")
+      .insert({
+        organization_id: organizationId,
+        name: contactName,
+        business_name: businessName,
+        email: cleanText(lead.email) || null,
+        phone: cleanText(lead.phone) || null,
+        website: cleanText(lead.website) || null,
+        status: "active",
+        notes:
+          cleanText(lead.notes) ||
+          "Converted from CRM lead. Add client notes here.",
+      })
+      .select("id")
+      .single();
+
+    if (clientError) {
+      throw new Error(clientError.message);
+    }
+
+    clientId = newClient.id;
+  }
+
+  const { error: updateLeadError } = await supabase
+    .from("leads")
+    .update({
+      client_id: clientId,
+      stage: "won",
+      status: "active",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", leadId);
+
+  if (updateLeadError) {
+    throw new Error(updateLeadError.message);
+  }
+
+  revalidatePath("/crm");
+  revalidatePath("/clients");
+}
+
 export async function deleteLead(formData) {
   const leadId = formData.get("leadId");
 

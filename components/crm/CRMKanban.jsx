@@ -5,6 +5,7 @@ import Button from "../ui/Button.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
 import { leadStages } from "../../lib/leadsData.js";
 import {
+  convertLeadToClient,
   createLead,
   deleteLead,
   moveLeadStage,
@@ -133,7 +134,84 @@ function SummaryCards({ summary }) {
   );
 }
 
-function CRMViewToggle({ viewMode, onViewChange, pipelineCount, archiveCount }) {
+function escapeCsvValue(value) {
+  const stringValue = String(value ?? "");
+
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n")
+  ) {
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+
+  return stringValue;
+}
+
+function downloadCsv(filename, rows) {
+  const csvContent = rows.map((row) => row.map(escapeCsvValue).join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function exportLeadsToCsv(leads, filename = "dvs-crm-leads.csv") {
+  const headers = [
+    "Business Name",
+    "Contact Name",
+    "Email",
+    "Phone",
+    "Website",
+    "Location",
+    "Source",
+    "Form Source",
+    "Form Name",
+    "Service Interest",
+    "Stage",
+    "Priority",
+    "Estimated Value",
+    "Next Follow-Up",
+    "Notes",
+    "Created Date",
+    "Client Linked",
+  ];
+
+  const rows = leads.map((lead) => [
+    lead.businessName,
+    lead.contactName,
+    lead.email,
+    lead.phone,
+    lead.website,
+    lead.location,
+    lead.source,
+    lead.formSource,
+    lead.formName,
+    lead.serviceInterest,
+    lead.stage,
+    lead.priority,
+    lead.estimatedValue,
+    lead.nextFollowUp,
+    lead.notes,
+    lead.createdAt,
+    lead.clientId ? "Yes" : "No",
+  ]);
+
+  downloadCsv(filename, [headers, ...rows]);
+}
+
+function CRMViewToggle({
+  viewMode,
+  onViewChange,
+  pipelineCount,
+  archiveCount,
+  onExport,
+}) {
   const views = [
     { key: "pipeline", label: "Pipeline", count: pipelineCount },
     { key: "archive", label: "Archive", count: archiveCount },
@@ -141,33 +219,44 @@ function CRMViewToggle({ viewMode, onViewChange, pipelineCount, archiveCount }) 
 
   return (
     <div className="mb-5 border-b border-[var(--app-border)]">
-      <div className="flex flex-wrap gap-8">
-        {views.map((view) => {
-          const isActive = viewMode === view.key;
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-8">
+          {views.map((view) => {
+            const isActive = viewMode === view.key;
 
-          return (
-            <button
-              key={view.key}
-              type="button"
-              onClick={() => onViewChange(view.key)}
-              className={`relative pb-4 text-sm font-black transition md:text-base ${
-                isActive
-                  ? "text-[var(--app-accent)]"
-                  : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
-              }`}
-            >
-              {view.label}
+            return (
+              <button
+                key={view.key}
+                type="button"
+                onClick={() => onViewChange(view.key)}
+                className={`relative pb-4 text-sm font-black transition md:text-base ${
+                  isActive
+                    ? "text-[var(--app-accent)]"
+                    : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
+                }`}
+              >
+                {view.label}
 
-              <span className="ml-2 rounded-[var(--radius-pill)] bg-[var(--app-accent-soft)] px-2 py-0.5 text-xs font-black">
-                {view.count}
-              </span>
+                <span className="ml-2 rounded-[var(--radius-pill)] bg-[var(--app-accent-soft)] px-2 py-0.5 text-xs font-black">
+                  {view.count}
+                </span>
 
-              {isActive && (
-                <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[var(--app-accent)] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
-              )}
-            </button>
-          );
-        })}
+                {isActive && (
+                  <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[var(--app-accent)] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-fit whitespace-nowrap"
+          onClick={onExport}
+        >
+          Export CSV
+        </Button>
       </div>
     </div>
   );
@@ -585,6 +674,16 @@ function ArchivedLeadsView({ leads, onOpenDetails, onOpenEdit }) {
   );
 }
 
+function ConvertLeadButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? "Converting..." : "Convert to Client"}
+    </Button>
+  );
+}
+
 function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
   if (!lead) return null;
 
@@ -617,19 +716,33 @@ function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onOpenEdit(lead)}
-            >
-              Edit
-            </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+  {lead.rawStage === "won" && !lead.clientId && (
+    <form action={convertLeadToClient}>
+  <input type="hidden" name="leadId" value={lead.id} />
 
-            <Button type="button" variant="ghost" onClick={onClose}>
-              ✕
-            </Button>
-          </div>
+  <ConvertLeadButton />
+</form>
+  )}
+
+  {lead.clientId && (
+    <span className="rounded-[var(--radius-md)] border border-[var(--app-border-strong)] bg-[var(--app-accent-soft)] px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-accent)]">
+      Client Linked
+    </span>
+  )}
+
+  <Button
+    type="button"
+    variant="secondary"
+    onClick={() => onOpenEdit(lead)}
+  >
+    Edit
+  </Button>
+
+  <Button type="button" variant="ghost" onClick={onClose}>
+    ✕
+  </Button>
+</div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -1060,6 +1173,15 @@ const archivedLeads = useMemo(() => {
   );
 }, [filteredLeads]);
 
+const exportableLeads = viewMode === "archive" ? archivedLeads : pipelineLeads;
+
+function handleExportCsv() {
+  const today = new Date().toISOString().slice(0, 10);
+  const viewLabel = viewMode === "archive" ? "archive" : "pipeline";
+
+  exportLeadsToCsv(exportableLeads, `dvs-crm-${viewLabel}-${today}.csv`);
+}
+
   function getStageLeads(stageKey) {
   return pipelineLeads.filter((lead) => lead.rawStage === stageKey);
 }
@@ -1093,6 +1215,7 @@ function closeLeadForm() {
   onViewChange={setViewMode}
   pipelineCount={pipelineLeads.length}
   archiveCount={archivedLeads.length}
+  onExport={handleExportCsv}
 />
 
 <CRMFilters
