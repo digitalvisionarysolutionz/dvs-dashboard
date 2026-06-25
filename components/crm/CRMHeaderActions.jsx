@@ -8,18 +8,12 @@ export default function CRMHeaderActions() {
   }
 
   return (
-    <>
-      <Button variant="secondary" className="whitespace-nowrap">
-        Export
-      </Button>
-
-      <Button
-        type="button"
-        className="whitespace-nowrap"
-        onClick={openNewLeadModal}
-      >
-        + New Lead
-      </Button>
-    </>
+    <Button
+      type="button"
+      className="whitespace-nowrap"
+      onClick={openNewLeadModal}
+    >
+      + New Lead
+    </Button>
   );
 }

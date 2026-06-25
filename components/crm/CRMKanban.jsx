@@ -249,14 +249,13 @@ function CRMViewToggle({
           })}
         </div>
 
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-fit whitespace-nowrap"
-          onClick={onExport}
-        >
-          Export CSV
-        </Button>
+        <button
+  type="button"
+  onClick={onExport}
+  className="h-10 w-fit whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-4 text-sm font-black text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:text-white"
+>
+  Export
+</button>
       </div>
     </div>
   );
