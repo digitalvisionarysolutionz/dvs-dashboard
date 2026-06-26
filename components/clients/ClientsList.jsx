@@ -613,7 +613,7 @@ function ClientFormModal({ open, client, onClose }) {
         onClick={onClose}
       />
 
-      <section className="relative z-10 flex h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
+      <section className="relative z-10 flex max-h-[82vh] w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
         <div className="shrink-0 border-b border-[var(--app-border)] p-5">
   <div className="flex items-start justify-between gap-4">
           <div>
@@ -647,7 +647,7 @@ function ClientFormModal({ open, client, onClose }) {
 >
   {isEditing && <input type="hidden" name="clientId" value={client.id} />}
 
-  <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+  <div className="space-y-5 overflow-y-auto p-5">
     <div className="grid gap-4 md:grid-cols-2">
       <FormField label="Business Name" required>
         <input

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
-import Button from "../../../components/ui/Button.jsx";
+import ProjectsHeaderActions from "../../../components/projects/ProjectsHeaderActions.jsx";
 import ProjectsList from "../../../components/projects/ProjectsList.jsx";
 import { createClient } from "../../../utils/supabase/server.js";
 import { getCurrentWorkspace } from "../../../lib/workspace.js";
@@ -31,12 +31,7 @@ export default async function ProjectsPage() {
         eyebrow="Projects"
         title="Project Management"
         description="Track active projects, deadlines, progress, linked clients, and current project status."
-        actions={
-          <>
-            <Button variant="secondary">Export</Button>
-            <Button>+ New Project</Button>
-          </>
-        }
+        actions={<ProjectsHeaderActions />}
       />
 
       <ProjectsList projects={projects} />

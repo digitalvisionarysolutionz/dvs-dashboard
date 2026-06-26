@@ -140,8 +140,9 @@ function NewProjectModal({ open, onClose }) {
         onClick={onClose}
       />
 
-      <section className="relative z-10 max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--app-border)] pb-4">
+      <section className="relative z-10 flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
+        <div className="shrink-0 border-b border-[var(--app-border)] p-5">
+  <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
               Project Creation
@@ -158,17 +159,19 @@ function NewProjectModal({ open, onClose }) {
           </div>
 
           <Button type="button" variant="ghost" onClick={onClose}>
-            ✕
-          </Button>
-        </div>
+  ✕
+</Button>
+  </div>
+</div>
 
-        <form
-          action={createProject}
-          onSubmit={() => {
-            onClose();
-          }}
-          className="space-y-5"
-        >
+<form
+  action={createProject}
+  onSubmit={() => {
+    onClose();
+  }}
+  className="flex min-h-0 flex-1 flex-col"
+>
+  <div className="space-y-5 overflow-y-auto p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Project Name" required>
               <input
@@ -221,17 +224,6 @@ function NewProjectModal({ open, onClose }) {
               <input name="dueDate" type="date" className="dvs-form-input" />
             </FormField>
 
-            <FormField label="Progress">
-              <input
-                name="progress"
-                type="number"
-                min="0"
-                max="100"
-                step="5"
-                defaultValue="0"
-                className="dvs-form-input"
-              />
-            </FormField>
           </div>
 
           <FormField label="Description">
@@ -252,13 +244,17 @@ function NewProjectModal({ open, onClose }) {
             />
           </FormField>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-[var(--app-border)] pt-5 sm:flex-row sm:items-center sm:justify-end">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
+            </div>
 
-            <Button type="submit">Create Project</Button>
-          </div>
+  <div className="shrink-0 border-t border-[var(--app-border)] bg-[#071018]/95 p-5 backdrop-blur">
+    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <Button type="button" variant="secondary" onClick={onClose}>
+        Cancel
+      </Button>
+
+      <Button type="submit">Create Project</Button>
+    </div>
+  </div>
         </form>
       </section>
     </div>
@@ -267,6 +263,18 @@ function NewProjectModal({ open, onClose }) {
 
 export default function Topbar({ onMenuClick }) {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
+  
+  useEffect(() => {
+  function handleOpenNewProject() {
+    setProjectModalOpen(true);
+  }
+
+  window.addEventListener("dvs-open-new-project", handleOpenNewProject);
+
+  return () => {
+    window.removeEventListener("dvs-open-new-project", handleOpenNewProject);
+  };
+}, []);
 
   return (
     <>
