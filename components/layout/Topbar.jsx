@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Button from "../ui/Button.jsx";
 import { createProject } from "../../app/(dashboard)/projects/actions.js";
+import Button from "../ui/Button.jsx";
+import CompactActionButton from "../ui/CompactActionButton.jsx";
+import DashboardModal from "../ui/DashboardModal.jsx";
+import FormField from "../ui/FormField.jsx";
 
 function SearchIcon() {
   return (
@@ -75,26 +78,13 @@ function IconButton({ children, label, badge }) {
   );
 }
 
-function FormField({ label, children, required = false }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">
-        {label}
-        {required && <span className="text-[var(--app-accent)]"> *</span>}
-      </span>
-
-      {children}
-    </label>
-  );
-}
-
 function NewProjectModal({ open, onClose }) {
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      return;
+      return undefined;
     }
 
     let ignore = false;
@@ -127,154 +117,141 @@ function NewProjectModal({ open, onClose }) {
     };
   }, [open]);
 
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
-      <button
-        type="button"
-        aria-label="Close new project form"
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <DashboardModal
+  open={open}
+  eyebrow="Project Creation"
+  title="New Project"
+description="Choose an existing client or create a new one with this project."  maxWidth="max-w-3xl"
+  onClose={onClose}
+      closeLabel="Close new project form"
+      footer={
+        <>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+          >
+            Cancel
+          </CompactActionButton>
 
-      <section className="relative z-10 flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
-        <div className="shrink-0 border-b border-[var(--app-border)] p-5">
-  <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
-              Project Creation
-            </p>
+          <CompactActionButton type="submit" form="new-project-form" variant="primary">
+            Create Project
+          </CompactActionButton>
+        </>
+      }
+    >
+      <form
+        id="new-project-form"
+        action={createProject}
+        onSubmit={() => {
+          onClose();
+        }}
+        className="space-y-5"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Project Name" required>
+            <input
+              name="projectName"
+              required
+              placeholder="Website refresh, dashboard build, content package..."
+              className="dvs-form-input"
+            />
+          </FormField>
 
-            <h2 className="mt-2 text-2xl font-black text-white">
-              New Project
-            </h2>
+          <FormField label="Existing Client">
+            <select name="clientId" className="dvs-form-input" defaultValue="">
+              <option value="">
+                {loadingClients
+                  ? "Loading clients..."
+                  : "No existing client selected"}
+              </option>
 
-            <p className="mt-1 text-sm text-slate-400">
-              Select an existing client or type a new client name. If a new
-              client is entered, it will be created automatically.
-            </p>
-          </div>
-
-          <Button type="button" variant="ghost" onClick={onClose}>
-  ✕
-</Button>
-  </div>
-</div>
-
-<form
-  action={createProject}
-  onSubmit={() => {
-    onClose();
-  }}
-  className="flex min-h-0 flex-1 flex-col"
->
-  <div className="space-y-5 overflow-y-auto p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="Project Name" required>
-              <input
-                name="projectName"
-                required
-                placeholder="Website refresh, dashboard build, content package..."
-                className="dvs-form-input"
-              />
-            </FormField>
-
-            <FormField label="Existing Client">
-              <select name="clientId" className="dvs-form-input" defaultValue="">
-                <option value="">
-                  {loadingClients ? "Loading clients..." : "No existing client selected"}
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
                 </option>
+              ))}
+            </select>
+          </FormField>
 
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="New Client Name">
-              <input
-                name="newClientName"
-                placeholder="Type new client name if not in the list"
-                className="dvs-form-input"
-              />
-            </FormField>
-
-            <FormField label="Status">
-              <select name="status" defaultValue="in_progress" className="dvs-form-input">
-                <option value="not_started">Not Started</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-              </select>
-            </FormField>
-
-            <FormField label="Priority">
-              <select name="priority" defaultValue="medium" className="dvs-form-input">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </FormField>
-
-            <FormField label="Due Date">
-              <input name="dueDate" type="date" className="dvs-form-input" />
-            </FormField>
-
-          </div>
-
-          <FormField label="Description">
-            <textarea
-              name="description"
-              rows="3"
-              placeholder="Briefly describe what needs to be built or delivered..."
-              className="dvs-form-input resize-none"
+          <FormField label="New Client Name">
+            <input
+              name="newClientName"
+              placeholder="Type new client name if not in the list"
+              className="dvs-form-input"
             />
           </FormField>
 
-          <FormField label="Notes">
-            <textarea
-              name="notes"
-              rows="3"
-              placeholder="Internal notes, scope details, client preferences, or next steps..."
-              className="dvs-form-input resize-none"
-            />
+          <FormField label="Status">
+            <select
+              name="status"
+              defaultValue="in_progress"
+              className="dvs-form-input"
+            >
+              <option value="not_started">Not Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="waiting_on_client">Waiting on Client</option>
+              <option value="ready_for_review">Ready for Review</option>
+              <option value="completed">Completed</option>
+            </select>
           </FormField>
 
-            </div>
+          <FormField label="Priority">
+            <select
+              name="priority"
+              defaultValue="medium"
+              className="dvs-form-input"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </FormField>
 
-  <div className="shrink-0 border-t border-[var(--app-border)] bg-[#071018]/95 p-5 backdrop-blur">
-    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-      <Button type="button" variant="secondary" onClick={onClose}>
-        Cancel
-      </Button>
+          <FormField label="Due Date">
+            <input name="dueDate" type="date" className="dvs-form-input" />
+          </FormField>
+        </div>
 
-      <Button type="submit">Create Project</Button>
-    </div>
-  </div>
-        </form>
-      </section>
-    </div>
+        <div className="grid gap-4 md:grid-cols-2">
+  <FormField label="Description">
+    <textarea
+      name="description"
+      rows="3"
+      placeholder="Project scope, deliverables, or goals..."
+      className="dvs-form-input resize-none"
+    />
+  </FormField>
+
+  <FormField label="Notes">
+    <textarea
+      name="notes"
+      rows="3"
+      placeholder="Internal notes or next steps..."
+      className="dvs-form-input resize-none"
+    />
+  </FormField>
+</div>
+      </form>
+    </DashboardModal>
   );
 }
 
 export default function Topbar({ onMenuClick }) {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
-  
+
   useEffect(() => {
-  function handleOpenNewProject() {
-    setProjectModalOpen(true);
-  }
+    function handleOpenNewProject() {
+      setProjectModalOpen(true);
+    }
 
-  window.addEventListener("dvs-open-new-project", handleOpenNewProject);
+    window.addEventListener("dvs-open-new-project", handleOpenNewProject);
 
-  return () => {
-    window.removeEventListener("dvs-open-new-project", handleOpenNewProject);
-  };
-}, []);
+    return () => {
+      window.removeEventListener("dvs-open-new-project", handleOpenNewProject);
+    };
+  }, []);
 
   return (
     <>
