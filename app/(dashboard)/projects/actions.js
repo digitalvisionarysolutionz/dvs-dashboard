@@ -104,16 +104,6 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
-function cleanNumber(value) {
-  const nextValue = Number(value || 0);
-
-  if (Number.isNaN(nextValue)) {
-    return 0;
-  }
-
-  return nextValue;
-}
-
 function cleanDate(value) {
   const nextValue = cleanText(value);
 
@@ -124,19 +114,25 @@ function cleanDate(value) {
   return nextValue;
 }
 
-export async function createProject(formData) {
-  const { supabase, organizationId } = await getWorkspaceContext();
+function getProgressFromStatus(status) {
+  const progressByStatus = {
+    not_started: 0,
+    in_progress: 40,
+    waiting_on_client: 60,
+    ready_for_review: 85,
+    completed: 100,
+    archived: 0,
+  };
 
-  const projectName = cleanText(formData.get("projectName"));
-  const existingClientId = cleanText(formData.get("clientId"));
-  const newClientName = cleanText(formData.get("newClientName"));
+  return progressByStatus[status] ?? 40;
+}
 
-  if (!projectName) {
-    throw new Error("Project name is required.");
-  }
-
-  let clientId = existingClientId || null;
-
+async function resolveProjectClientId({
+  supabase,
+  organizationId,
+  existingClientId,
+  newClientName,
+}) {
   if (newClientName) {
     const { data: existingClient, error: existingError } = await supabase
       .from("clients")
@@ -150,32 +146,42 @@ export async function createProject(formData) {
     }
 
     if (existingClient?.id) {
-      clientId = existingClient.id;
-    } else {
-      const { data: newClient, error: clientError } = await supabase
-        .from("clients")
-        .insert({
-          organization_id: organizationId,
-          name: newClientName,
-          business_name: newClientName,
-          status: "active",
-          notes: "Created from new project modal.",
-        })
-        .select("id")
-        .single();
-
-      if (clientError) {
-        throw new Error(clientError.message);
-      }
-
-      clientId = newClient.id;
+      return existingClient.id;
     }
+
+    const { data: newClient, error: clientError } = await supabase
+      .from("clients")
+      .insert({
+        organization_id: organizationId,
+        name: newClientName,
+        business_name: newClientName,
+        status: "active",
+        notes: "Created from project form.",
+      })
+      .select("id")
+      .single();
+
+    if (clientError) {
+      throw new Error(clientError.message);
+    }
+
+    return newClient.id;
+  }
+
+  return existingClientId || null;
+}
+
+function buildProjectPayload(formData, clientId) {
+  const projectName = cleanText(formData.get("projectName"));
+
+  if (!projectName) {
+    throw new Error("Project name is required.");
   }
 
   const status = cleanText(formData.get("status")) || "in_progress";
+  const now = new Date().toISOString();
 
-  const { error } = await supabase.from("projects").insert({
-    organization_id: organizationId,
+  return {
     client_id: clientId,
     name: projectName,
     description:
@@ -184,11 +190,84 @@ export async function createProject(formData) {
     notes: cleanText(formData.get("notes")) || null,
     status,
     priority: cleanText(formData.get("priority")) || "medium",
-    progress: cleanNumber(formData.get("progress")),
+    progress: getProgressFromStatus(status),
     due_date: cleanDate(formData.get("dueDate")),
-    completed_at: status === "completed" ? new Date().toISOString() : null,
-    archived_at: status === "archived" ? new Date().toISOString() : null,
+    completed_at: status === "completed" ? now : null,
+    archived_at: status === "archived" ? now : null,
+  };
+}
+
+export async function createProject(formData) {
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const existingClientId = cleanText(formData.get("clientId"));
+  const newClientName = cleanText(formData.get("newClientName"));
+
+  const clientId = await resolveProjectClientId({
+    supabase,
+    organizationId,
+    existingClientId,
+    newClientName,
   });
+
+  const payload = buildProjectPayload(formData, clientId);
+
+  const { data: createdProject, error } = await supabase
+  .from("projects")
+  .insert({
+    organization_id: organizationId,
+    ...payload,
+  })
+  .select("id, client_id")
+  .single();
+
+if (error) {
+  throw new Error(error.message);
+}
+
+if (clientId && createdProject?.id && createdProject.client_id !== clientId) {
+  const { error: relinkError } = await supabase
+    .from("projects")
+    .update({ client_id: clientId })
+    .eq("organization_id", organizationId)
+    .eq("id", createdProject.id);
+
+  if (relinkError) {
+    throw new Error(relinkError.message);
+  }
+}
+
+  revalidatePath("/");
+  revalidatePath("/projects");
+  revalidatePath("/clients");
+}
+
+export async function updateProject(formData) {
+  const projectId = cleanText(formData.get("projectId"));
+
+  if (!projectId) {
+    throw new Error("Missing project ID.");
+  }
+
+  const { supabase, organizationId } = await getWorkspaceContext();
+
+  const existingClientId = cleanText(formData.get("clientId"));
+  const newClientName = cleanText(formData.get("newClientName"));
+
+  const clientId = await resolveProjectClientId({
+    supabase,
+    organizationId,
+    existingClientId,
+    newClientName,
+  });
+
+  const payload = buildProjectPayload(formData, clientId);
+
+  const { error } = await supabase
+    .from("projects")
+    .update(payload)
+    .eq("organization_id", organizationId)
+    .eq("id", projectId);
 
   if (error) {
     throw new Error(error.message);
@@ -215,6 +294,7 @@ export async function moveSelectedProjectsToActive(formData) {
 
   await updateProjects(projectIds, {
     status: "in_progress",
+    progress: 40,
     completed_at: null,
     archived_at: null,
   });
@@ -225,6 +305,7 @@ export async function archiveSelectedProjects(formData) {
 
   await updateProjects(projectIds, {
     status: "archived",
+    progress: 0,
     archived_at: new Date().toISOString(),
   });
 }
@@ -246,7 +327,7 @@ export async function toggleSingleProjectCompletion(formData) {
   if (currentStatus === "completed") {
     await updateProjects([projectId], {
       status: "in_progress",
-      progress: 75,
+      progress: 40,
       completed_at: null,
       archived_at: null,
     });
@@ -267,6 +348,7 @@ export async function moveSingleProjectToActive(formData) {
 
   await updateProjects(projectIds, {
     status: "in_progress",
+    progress: 40,
     completed_at: null,
     archived_at: null,
   });
@@ -277,6 +359,7 @@ export async function archiveSingleProject(formData) {
 
   await updateProjects(projectIds, {
     status: "archived",
+    progress: 0,
     archived_at: new Date().toISOString(),
   });
 }

@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "../ui/Button.jsx";
+import CompactActionButton from "../ui/CompactActionButton.jsx";
+import DashboardModal from "../ui/DashboardModal.jsx";
+import FormField from "../ui/FormField.jsx";
 import ProgressBar from "../ui/ProgressBar.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
 import SmartMenu, { SmartMenuItem } from "../ui/SmartMenu.jsx";
@@ -14,6 +17,7 @@ import {
   archiveSingleProject,
   deleteSingleProject,
   toggleSingleProjectCompletion,
+  updateProject,
 } from "../../app/(dashboard)/projects/actions.js";
 
 function SearchIcon() {
@@ -115,6 +119,20 @@ function getProjectTitle(project) {
   return `${project.clientName} — ${project.name}`;
 }
 
+function emptyField(value, fallback = "") {
+  if (
+    value === "No due date" ||
+    value === "No project description added yet." ||
+    value === "No project notes added yet." ||
+    value === "Internal" ||
+    value === "Untitled Project"
+  ) {
+    return fallback;
+  }
+
+  return value || fallback;
+}
+
 function ProjectTabs({ activeTab, onTabChange, counts }) {
   const tabs = [
     { key: "active", label: "Active", count: counts.active },
@@ -185,19 +203,22 @@ function FilterBar({
       <select
         value={statusValue}
         onChange={(event) => onStatusChange(event.target.value)}
-        className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 text-sm font-bold text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)] sm:w-[150px]"
+        className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 text-sm font-bold text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)] sm:w-[180px]"
       >
         <option className="bg-[#071018]" value="all">
           All Status
         </option>
-        <option className="bg-[#071018]" value="planning">
-          Planning
+        <option className="bg-[#071018]" value="not_started">
+          Not Started
         </option>
         <option className="bg-[#071018]" value="in_progress">
           In Progress
         </option>
-        <option className="bg-[#071018]" value="review">
-          Review
+        <option className="bg-[#071018]" value="waiting_on_client">
+          Waiting on Client
+        </option>
+        <option className="bg-[#071018]" value="ready_for_review">
+          Ready for Review
         </option>
         <option className="bg-[#071018]" value="completed">
           Completed
@@ -246,22 +267,23 @@ function FilterBar({
 }
 
 function ProjectHeroStats({ projects }) {
-  const activeCount = projects.filter(
+  const activeProjects = projects.filter(
     (project) => !project.isCompleted && !project.isArchived
-  ).length;
+  );
 
+  const activeCount = activeProjects.length;
   const completedCount = projects.filter((project) => project.isCompleted).length;
   const archivedCount = projects.filter((project) => project.isArchived).length;
 
-  const highCount = projects.filter(
+  const highCount = activeProjects.filter(
     (project) => project.rawPriority === "high"
   ).length;
 
-  const mediumCount = projects.filter(
+  const mediumCount = activeProjects.filter(
     (project) => project.rawPriority === "medium"
   ).length;
 
-  const lowCount = projects.filter(
+  const lowCount = activeProjects.filter(
     (project) => project.rawPriority === "low"
   ).length;
 
@@ -292,7 +314,7 @@ function ProjectHeroStats({ projects }) {
     {
       label: "High Priority",
       value: highCount,
-      caption: "Needs attention",
+      caption: "Active projects only",
       tone: "red",
     },
   ];
@@ -360,68 +382,68 @@ function ProjectHeroStats({ projects }) {
         </div>
 
         <div className="rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-[#071018] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
-  <div className="grid min-h-[150px] grid-cols-[minmax(0,1fr)_110px] items-center gap-4 sm:grid-cols-[minmax(0,1fr)_130px]">
-    <div className="min-w-0">
-      <p className="text-sm font-black text-[var(--app-text)]">
-        Priority Breakdown
-      </p>
+          <div className="grid min-h-[150px] grid-cols-[minmax(0,1fr)_110px] items-center gap-4 sm:grid-cols-[minmax(0,1fr)_130px]">
+            <div className="min-w-0">
+              <p className="text-sm font-black text-[var(--app-text)]">
+                Priority Breakdown
+              </p>
 
-      <p className="mt-1 text-xs text-[var(--app-text-soft)]">
-        High, medium, and low priority mix
-      </p>
+              <p className="mt-1 text-xs text-[var(--app-text-soft)]">
+                Active project priority mix
+              </p>
 
-      <div className="mt-4 space-y-2 text-xs sm:text-sm">
-        <div className="flex items-center justify-between gap-3 text-[var(--app-text-muted)]">
-          <span className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-            High
-          </span>
+              <div className="mt-4 space-y-2 text-xs sm:text-sm">
+                <div className="flex items-center justify-between gap-3 text-[var(--app-text-muted)]">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                    High
+                  </span>
 
-          <span className="shrink-0 font-black text-[var(--app-text)]">
-            {highCount} ({highPercentage}%)
-          </span>
+                  <span className="shrink-0 font-black text-[var(--app-text)]">
+                    {highCount} ({highPercentage}%)
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 text-[var(--app-text-muted)]">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                    Medium
+                  </span>
+
+                  <span className="shrink-0 font-black text-[var(--app-text)]">
+                    {mediumCount} ({mediumPercentage}%)
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 text-[var(--app-text-muted)]">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+                    Low
+                  </span>
+
+                  <span className="shrink-0 font-black text-[var(--app-text)]">
+                    {lowCount} ({lowPercentage}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <div
+                className="h-24 w-24 shrink-0 rounded-full sm:h-28 sm:w-28"
+                style={{
+                  background: `conic-gradient(
+                    #fb7185 0 ${highPercentage}%,
+                    #facc15 ${highPercentage}% ${highPercentage + mediumPercentage}%,
+                    #4ade80 ${highPercentage + mediumPercentage}% 100%
+                  )`,
+                }}
+              >
+                <div className="m-[16px] h-16 w-16 rounded-full bg-[#071018] sm:m-[18px] sm:h-[76px] sm:w-[76px]" />
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div className="flex items-center justify-between gap-3 text-[var(--app-text-muted)]">
-          <span className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-            Medium
-          </span>
-
-          <span className="shrink-0 font-black text-[var(--app-text)]">
-            {mediumCount} ({mediumPercentage}%)
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 text-[var(--app-text-muted)]">
-          <span className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-            Low
-          </span>
-
-          <span className="shrink-0 font-black text-[var(--app-text)]">
-            {lowCount} ({lowPercentage}%)
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <div className="flex justify-end">
-      <div
-        className="h-24 w-24 shrink-0 rounded-full sm:h-28 sm:w-28"
-        style={{
-          background: `conic-gradient(
-            #fb7185 0 ${highPercentage}%,
-            #facc15 ${highPercentage}% ${highPercentage + mediumPercentage}%,
-            #4ade80 ${highPercentage + mediumPercentage}% 100%
-          )`,
-        }}
-      >
-        <div className="m-[16px] h-16 w-16 rounded-full bg-[#071018] sm:m-[18px] sm:h-[76px] sm:w-[76px]" />
-      </div>
-    </div>
-  </div>
-</div>
       </div>
     </section>
   );
@@ -452,11 +474,11 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <form
-  action={primaryAction}
-  onSubmit={() => {
-    onClearSelection();
-  }}
->
+          action={primaryAction}
+          onSubmit={() => {
+            onClearSelection();
+          }}
+        >
           <input type="hidden" name="projectIds" value={selectedJson} />
           <Button type="submit" size="sm">
             {primaryLabel}
@@ -465,11 +487,11 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
 
         {activeTab !== "archive" && (
           <form
-  action={archiveSelectedProjects}
-  onSubmit={() => {
-    onClearSelection();
-  }}
->
+            action={archiveSelectedProjects}
+            onSubmit={() => {
+              onClearSelection();
+            }}
+          >
             <input type="hidden" name="projectIds" value={selectedJson} />
             <Button type="submit" variant="secondary" size="sm">
               Archive
@@ -495,11 +517,11 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
               </p>
 
               <form
-  action={deleteSelectedProjects}
-  onSubmit={() => {
-    onClearSelection();
-  }}
->
+                action={deleteSelectedProjects}
+                onSubmit={() => {
+                  onClearSelection();
+                }}
+              >
                 <input type="hidden" name="projectIds" value={selectedJson} />
                 <button
                   type="submit"
@@ -590,13 +612,15 @@ function ProjectRow({
   isSelected,
   onToggleSelected,
   onOpenDetails,
+  onOpenEdit,
 }) {
   const displayProgress = getDisplayProgress(project);
-  const isUrgent = project.rawPriority === "high" && !project.isCompleted;
+  const isUrgent =
+    project.rawPriority === "high" && !project.isCompleted && !project.isArchived;
 
   return (
     <article
-      className={`grid gap-4 border-b border-[var(--app-border)] px-4 py-4 transition last:border-b-0 hover:bg-white/[0.035] lg:grid-cols-[minmax(0,1.6fr)_minmax(220px,0.9fr)_auto] lg:items-center ${
+  className={`grid gap-4 border-b border-[var(--app-border)] px-4 py-4 transition last:border-b-0 hover:bg-white/[0.035] xl:grid-cols-[minmax(0,1fr)_320px] xl:items-center ${
         project.isCompleted ? "bg-green-400/[0.035]" : ""
       } ${project.isArchived ? "opacity-75" : ""}`}
     >
@@ -662,29 +686,30 @@ function ProjectRow({
         </div>
       </div>
 
-      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-black/20 p-3 text-sm">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-xs font-black uppercase tracking-widest text-[var(--app-text-soft)]">
-            Progress
-          </p>
+      <div className="space-y-3 xl:min-w-[300px]">
+  <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-black/20 p-3 text-sm">
+    <div className="mb-2 flex items-center justify-between gap-3">
+      <p className="text-xs font-black uppercase tracking-widest text-[var(--app-text-soft)]">
+        Progress
+      </p>
 
-          <p className="text-sm font-black text-[var(--app-text)]">
-            {displayProgress}%
-          </p>
-        </div>
+      <p className="text-sm font-black text-[var(--app-text)]">
+        {displayProgress}%
+      </p>
+    </div>
 
-        <ProgressBar value={displayProgress} />
+    <ProgressBar value={displayProgress} />
 
-        <p className="mt-3 text-xs font-bold uppercase tracking-widest text-[var(--app-text-soft)]">
-          {project.isCompleted
-            ? "Completed"
-            : project.isArchived
-              ? "Archived"
-              : "In motion"}
-        </p>
-      </div>
+    <p className="mt-3 text-xs font-bold uppercase tracking-widest text-[var(--app-text-soft)]">
+      {project.isCompleted
+        ? "Completed"
+        : project.isArchived
+          ? "Archived"
+          : "In motion"}
+    </p>
+  </div>
 
-      <div className="flex items-center justify-start gap-2 lg:justify-end">
+  <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
         <Button
           type="button"
           variant="secondary"
@@ -692,6 +717,15 @@ function ProjectRow({
           onClick={() => onOpenDetails(project)}
         >
           View
+        </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onOpenEdit(project)}
+        >
+          Edit
         </Button>
 
         {project.isCompleted || project.isArchived ? (
@@ -717,9 +751,10 @@ function ProjectRow({
           </form>
         )}
 
-        <RowActions project={project} />
-      </div>
-    </article>
+            <RowActions project={project} />
+  </div>
+</div>
+</article>
   );
 }
 
@@ -728,6 +763,7 @@ function ProjectTable({
   selectedIds,
   onToggleSelected,
   onOpenDetails,
+  onOpenEdit,
 }) {
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-[#050a10]">
@@ -739,6 +775,7 @@ function ProjectTable({
             isSelected={selectedIds.includes(project.id)}
             onToggleSelected={onToggleSelected}
             onOpenDetails={onOpenDetails}
+            onOpenEdit={onOpenEdit}
           />
         ))
       ) : (
@@ -750,100 +787,272 @@ function ProjectTable({
   );
 }
 
-function DetailsModal({ project, onClose }) {
+function DetailsModal({ project, onClose, onOpenEdit }) {
   if (!project) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
-      <button
-        type="button"
-        aria-label="Close project details"
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <DashboardModal
+      open={Boolean(project)}
+      eyebrow="Project Details"
+      title={getProjectTitle(project)}
+      description={`Client: ${project.clientName}`}
+      maxWidth="max-w-3xl"
+      onClose={onClose}
+      closeLabel="Close project details"
+      footer={
+        <>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={() => onOpenEdit(project)}
+          >
+            Edit Project
+          </CompactActionButton>
 
-      <section className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--app-border)] pb-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
-              Project Details
-            </p>
-
-            <h2 className="mt-3 text-2xl font-black text-white">
-              {getProjectTitle(project)}
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-400">
-              Client: {project.clientName}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary">
-              Edit
-            </Button>
-
-            <Button type="button" variant="ghost" onClick={onClose}>
-              ✕
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Status
-            </p>
-            <p className="mt-2 font-bold text-white">{project.status}</p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Priority
-            </p>
-            <p className="mt-2 font-bold text-white">{project.priority}</p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Due
-            </p>
-            <p className="mt-2 font-bold text-white">{project.dueDate}</p>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+            Close
+          </CompactActionButton>
+        </>
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
           <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Progress
+            Status
           </p>
-          <div className="mt-3">
-            <ProgressBar value={getDisplayProgress(project)} />
-          </div>
+          <p className="mt-2 font-bold text-white">{project.status}</p>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Description
-            </p>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              {project.description}
-            </p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Internal Notes
-            </p>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              {project.notes}
-            </p>
-          </div>
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+            Priority
+          </p>
+          <p className="mt-2 font-bold text-white">{project.priority}</p>
         </div>
-      </section>
-    </div>
+
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+            Due
+          </p>
+          <p className="mt-2 font-bold text-white">{project.dueDate}</p>
+        </div>
+      </div>
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+        <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+          Progress
+        </p>
+        <div className="mt-3">
+          <ProgressBar value={getDisplayProgress(project)} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+            Description
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            {project.description}
+          </p>
+        </div>
+
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+            Internal Notes
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            {project.notes}
+          </p>
+        </div>
+      </div>
+    </DashboardModal>
+  );
+}
+
+function ProjectFormModal({ project, open, onClose }) {
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    let ignore = false;
+
+    async function loadClients() {
+      setLoadingClients(true);
+
+      try {
+        const response = await fetch("/api/project-options");
+        const data = await response.json();
+
+        if (!ignore) {
+          setClients(data.clients || []);
+        }
+      } catch {
+        if (!ignore) {
+          setClients([]);
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingClients(false);
+        }
+      }
+    }
+
+    loadClients();
+
+    return () => {
+      ignore = true;
+    };
+  }, [open]);
+
+  if (!open || !project) {
+    return null;
+  }
+
+  return (
+    <DashboardModal
+      open={open}
+      eyebrow="Project Management"
+      title="Edit Project"
+      description="Update project details, linked client, status, priority, due date, and internal notes."
+      maxWidth="max-w-3xl"
+      onClose={onClose}
+      closeLabel="Close edit project form"
+      footer={
+        <>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+          >
+            Cancel
+          </CompactActionButton>
+
+          <CompactActionButton
+            type="submit"
+            form="edit-project-form"
+            variant="primary"
+          >
+            Save Changes
+          </CompactActionButton>
+        </>
+      }
+    >
+      <form
+        id="edit-project-form"
+        action={updateProject}
+        onSubmit={() => {
+          onClose();
+        }}
+        className="space-y-5"
+      >
+        <input type="hidden" name="projectId" value={project.id} />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Project Name" required>
+            <input
+              name="projectName"
+              required
+              defaultValue={emptyField(project.name)}
+              placeholder="Website refresh, dashboard build, content package..."
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Existing Client">
+            <select
+              name="clientId"
+              className="dvs-form-input"
+              defaultValue={project.clientId || ""}
+            >
+              <option value="">
+                {loadingClients
+                  ? "Loading clients..."
+                  : "No existing client selected"}
+              </option>
+
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="New Client Name">
+            <input
+              name="newClientName"
+              placeholder="Type new client name to create and link"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Status">
+            <select
+              name="status"
+              defaultValue={project.rawStatus || "in_progress"}
+              className="dvs-form-input"
+            >
+              <option value="not_started">Not Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="waiting_on_client">Waiting on Client</option>
+              <option value="ready_for_review">Ready for Review</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+            </select>
+          </FormField>
+
+          <FormField label="Priority">
+            <select
+              name="priority"
+              defaultValue={project.rawPriority || "medium"}
+              className="dvs-form-input"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </FormField>
+
+          <FormField label="Due Date">
+            <input
+              name="dueDate"
+              type="date"
+              defaultValue={project.dueDateInput || ""}
+              className="dvs-form-input"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Description">
+            <textarea
+              name="description"
+              rows="3"
+              defaultValue={emptyField(project.description)}
+              placeholder="Project scope, deliverables, or goals..."
+              className="dvs-form-input resize-none"
+            />
+          </FormField>
+
+          <FormField label="Notes">
+            <textarea
+              name="notes"
+              rows="3"
+              defaultValue={emptyField(project.notes)}
+              placeholder="Internal notes or next steps..."
+              className="dvs-form-input resize-none"
+            />
+          </FormField>
+        </div>
+      </form>
+    </DashboardModal>
   );
 }
 
@@ -851,6 +1060,8 @@ export default function ProjectsList({ projects = [] }) {
   const [activeTab, setActiveTab] = useState("active");
   const [selectedIds, setSelectedIds] = useState([]);
   const [detailsProject, setDetailsProject] = useState(null);
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [statusValue, setStatusValue] = useState("all");
   const [clientValue, setClientValue] = useState("all");
@@ -912,7 +1123,9 @@ export default function ProjectsList({ projects = [] }) {
         return a.name.localeCompare(b.name);
       }
 
-      return a.dueDate.localeCompare(b.dueDate);
+      return (a.dueDateInput || "9999-12-31").localeCompare(
+        b.dueDateInput || "9999-12-31"
+      );
     });
   }, [
     activeTab,
@@ -940,55 +1153,74 @@ export default function ProjectsList({ projects = [] }) {
     setSelectedIds([]);
   }
 
+  function openEditProject(project) {
+    setDetailsProject(null);
+    setEditingProject(project);
+    setProjectFormOpen(true);
+  }
+
+  function closeProjectForm() {
+    setEditingProject(null);
+    setProjectFormOpen(false);
+  }
+
   return (
     <>
       <div className="space-y-5">
         <ProjectHeroStats projects={projects} />
 
         <div className="rounded-[var(--radius-xl)] border border-[var(--app-border)] bg-gradient-to-br from-white/[0.045] via-white/[0.025] to-cyan-300/[0.025] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)]">
-  <div className="space-y-5">
-    <ProjectTabs
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      counts={counts}
-    />
+          <div className="space-y-5">
+            <ProjectTabs
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              counts={counts}
+            />
 
-    <FilterBar
-      searchValue={searchValue}
-      onSearchChange={setSearchValue}
-      statusValue={statusValue}
-      onStatusChange={setStatusValue}
-      clientValue={clientValue}
-      onClientChange={setClientValue}
-      sortValue={sortValue}
-      onSortChange={setSortValue}
-      clients={clients}
-    />
+            <FilterBar
+              searchValue={searchValue}
+              onSearchChange={setSearchValue}
+              statusValue={statusValue}
+              onStatusChange={setStatusValue}
+              clientValue={clientValue}
+              onClientChange={setClientValue}
+              sortValue={sortValue}
+              onSortChange={setSortValue}
+              clients={clients}
+            />
 
-    <BatchToolbar
-      selectedIds={selectedIds}
-      activeTab={activeTab}
-      onClearSelection={clearSelection}
-    />
+            <BatchToolbar
+              selectedIds={selectedIds}
+              activeTab={activeTab}
+              onClearSelection={clearSelection}
+            />
 
-    <ProjectTable
-      projects={visibleProjects}
-      selectedIds={selectedIds}
-      onToggleSelected={handleToggleSelected}
-      onOpenDetails={setDetailsProject}
-    />
+            <ProjectTable
+              projects={visibleProjects}
+              selectedIds={selectedIds}
+              onToggleSelected={handleToggleSelected}
+              onOpenDetails={setDetailsProject}
+              onOpenEdit={openEditProject}
+            />
 
-    <div className="text-sm text-[var(--app-text-muted)]">
-      Showing {visibleProjects.length} of{" "}
-      {getTabProjects(projects, activeTab).length} projects
-    </div>
-  </div>
-</div>
+            <div className="text-sm text-[var(--app-text-muted)]">
+              Showing {visibleProjects.length} of{" "}
+              {getTabProjects(projects, activeTab).length} projects
+            </div>
+          </div>
+        </div>
       </div>
 
       <DetailsModal
         project={detailsProject}
         onClose={() => setDetailsProject(null)}
+        onOpenEdit={openEditProject}
+      />
+
+      <ProjectFormModal
+        project={editingProject}
+        open={projectFormOpen}
+        onClose={closeProjectForm}
       />
     </>
   );

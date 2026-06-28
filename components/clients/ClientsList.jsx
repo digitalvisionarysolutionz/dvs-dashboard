@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Button from "../ui/Button.jsx";
+import CompactActionButton from "../ui/CompactActionButton.jsx";
+import DashboardModal from "../ui/DashboardModal.jsx";
+import FormField from "../ui/FormField.jsx";
+import SmartMenu, { SmartMenuItem } from "../ui/SmartMenu.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
 import {
   archiveSelectedClients,
@@ -80,6 +84,20 @@ function getTabClients(clients, activeTab) {
   return clients.filter((client) => !client.isArchived);
 }
 
+function emptyField(value, fallback = "") {
+  if (
+    value === "No email" ||
+    value === "No phone" ||
+    value === "No notes added yet." ||
+    value === "Unnamed Client" ||
+    value === "Unnamed Business"
+  ) {
+    return fallback;
+  }
+
+  return value || fallback;
+}
+
 function ClientTabs({ activeTab, onTabChange, counts }) {
   const tabs = [
     { key: "active", label: "Active", count: counts.active },
@@ -104,6 +122,7 @@ function ClientTabs({ activeTab, onTabChange, counts }) {
               }`}
             >
               {tab.label}
+
               <span className="ml-2 rounded-[var(--radius-pill)] bg-[var(--app-accent-soft)] px-2 py-0.5 text-xs">
                 {tab.count}
               </span>
@@ -167,13 +186,15 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
   return (
     <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--app-border-strong)] bg-[#071018] p-3 shadow-[0_0_28px_rgba(92,244,236,0.12)] sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm font-black text-[var(--app-text)]">
-        {selectedIds.length} client{selectedIds.length === 1 ? "" : "s"} selected
+        {selectedIds.length} client{selectedIds.length === 1 ? "" : "s"}{" "}
+        selected
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
         {activeTab === "archive" ? (
           <form action={moveSelectedClientsToActive}>
             <input type="hidden" name="clientIds" value={selectedJson} />
+
             <Button type="submit" size="sm">
               Mark Active
             </Button>
@@ -181,6 +202,7 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
         ) : (
           <form action={archiveSelectedClients}>
             <input type="hidden" name="clientIds" value={selectedJson} />
+
             <Button type="submit" variant="secondary" size="sm">
               Archive
             </Button>
@@ -206,6 +228,7 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
 
               <form action={deleteSelectedClients}>
                 <input type="hidden" name="clientIds" value={selectedJson} />
+
                 <button
                   type="submit"
                   onClick={(event) => {
@@ -235,56 +258,6 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
 }
 
 function RowActions({ client, onOpenDetails, onOpenEdit }) {
-  const [open, setOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({
-    top: 0,
-    left: 0,
-    placement: "bottom",
-  });
-
-  const buttonRef = useRef(null);
-
-  function toggleMenu() {
-    if (!buttonRef.current) {
-      setOpen((current) => !current);
-      return;
-    }
-
-    const buttonRect = buttonRef.current.getBoundingClientRect();
-    const menuHeight = 120;
-    const menuWidth = 160;
-    const spaceBelow = window.innerHeight - buttonRect.bottom;
-    const shouldOpenUp = spaceBelow < menuHeight + 24;
-
-    setMenuPosition({
-      top: shouldOpenUp
-        ? buttonRect.top - menuHeight - 8
-        : buttonRect.bottom + 8,
-      left: Math.max(12, buttonRect.right - menuWidth),
-      placement: shouldOpenUp ? "top" : "bottom",
-    });
-
-    setOpen((current) => !current);
-  }
-
-  useEffect(() => {
-    function closeMenu() {
-      setOpen(false);
-    }
-
-    if (!open) {
-      return;
-    }
-
-    window.addEventListener("scroll", closeMenu, true);
-    window.addEventListener("resize", closeMenu);
-
-    return () => {
-      window.removeEventListener("scroll", closeMenu, true);
-      window.removeEventListener("resize", closeMenu);
-    };
-  }, [open]);
-
   return (
     <div className="flex items-center justify-start gap-2 lg:justify-end">
       <Button
@@ -305,80 +278,46 @@ function RowActions({ client, onOpenDetails, onOpenEdit }) {
         Edit
       </Button>
 
-      <div className="relative">
-        <button
-          ref={buttonRef}
-          type="button"
-          aria-label={`More actions for ${client.businessName}`}
-          onClick={toggleMenu}
-          className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--app-border)] bg-[#071018] text-[var(--app-text-muted)] transition hover:border-[var(--app-border-strong)] hover:text-white"
-        >
-          <DotsIcon />
-        </button>
+      <SmartMenu
+        label={`More actions for ${client.businessName}`}
+        button={<DotsIcon />}
+        width={160}
+        estimatedHeight={120}
+      >
+        {client.isArchived ? (
+          <form action={moveSingleClientToActive}>
+            <input type="hidden" name="clientId" value={client.id} />
 
-        {open && (
-          <>
-            <button
-              type="button"
-              aria-label="Close client actions"
-              className="fixed inset-0 z-[80] cursor-default bg-transparent"
-              onClick={() => setOpen(false)}
-            />
+            <SmartMenuItem type="submit">Mark Active</SmartMenuItem>
+          </form>
+        ) : (
+          <form action={archiveSingleClient}>
+            <input type="hidden" name="clientId" value={client.id} />
 
-            <div
-              className="fixed z-[90] w-40 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]"
-              style={{
-                top: `${menuPosition.top}px`,
-                left: `${menuPosition.left}px`,
-              }}
-            >
-              {client.isArchived ? (
-                <form action={moveSingleClientToActive}>
-                  <input type="hidden" name="clientId" value={client.id} />
-
-                  <button
-                    type="submit"
-                    className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
-                  >
-                    Mark Active
-                  </button>
-                </form>
-              ) : (
-                <form action={archiveSingleClient}>
-                  <input type="hidden" name="clientId" value={client.id} />
-
-                  <button
-                    type="submit"
-                    className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
-                  >
-                    Archive
-                  </button>
-                </form>
-              )}
-
-              <form action={deleteSingleClient}>
-                <input type="hidden" name="clientId" value={client.id} />
-
-                <button
-                  type="submit"
-                  onClick={(event) => {
-                    if (
-                      !window.confirm(
-                        "Delete this client permanently? This cannot be undone."
-                      )
-                    ) {
-                      event.preventDefault();
-                    }
-                  }}
-                  className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-red-200 hover:bg-red-400/10"
-                >
-                  Delete
-                </button>
-              </form>
-            </div>
-          </>
+            <SmartMenuItem type="submit">Archive</SmartMenuItem>
+          </form>
         )}
-      </div>
+
+        <form action={deleteSingleClient}>
+          <input type="hidden" name="clientId" value={client.id} />
+
+          <SmartMenuItem
+            type="submit"
+            tone="danger"
+            onClick={(event) => {
+              if (
+                !window.confirm(
+                  "Delete this client permanently? This cannot be undone."
+                )
+              ) {
+                event.preventDefault();
+              }
+            }}
+          >
+            Delete
+          </SmartMenuItem>
+        </form>
+      </SmartMenu>
     </div>
   );
 }
@@ -439,10 +378,10 @@ function ClientRow({
       </div>
 
       <RowActions
-  client={client}
-  onOpenDetails={onOpenDetails}
-  onOpenEdit={onOpenEdit}
-/>
+        client={client}
+        onOpenDetails={onOpenDetails}
+        onOpenEdit={onOpenEdit}
+      />
     </article>
   );
 }
@@ -454,19 +393,18 @@ function ClientDirectory({
   onOpenDetails,
   onOpenEdit,
 }) {
-
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-[#050a10]">
       {clients.length > 0 ? (
         clients.map((client) => (
           <ClientRow
-  key={client.id}
-  client={client}
-  isSelected={selectedIds.includes(client.id)}
-  onToggleSelected={onToggleSelected}
-  onOpenDetails={onOpenDetails}
-  onOpenEdit={onOpenEdit}
-/>
+            key={client.id}
+            client={client}
+            isSelected={selectedIds.includes(client.id)}
+            onToggleSelected={onToggleSelected}
+            onOpenDetails={onOpenDetails}
+            onOpenEdit={onOpenEdit}
+          />
         ))
       ) : (
         <div className="p-8 text-center text-sm text-[var(--app-text-muted)]">
@@ -483,117 +421,82 @@ function ClientDetailsModal({ client, onClose, onOpenEdit }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
-      <button
-        type="button"
-        aria-label="Close client details"
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <DashboardModal
+      open={Boolean(client)}
+      eyebrow="Client Details"
+      title={client.businessName}
+      description={`Contact: ${client.name}`}
+      maxWidth="max-w-3xl"
+      onClose={onClose}
+      closeLabel="Close client details"
+      footer={
+        <>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={() => onOpenEdit(client)}
+          >
+            Edit Client
+          </CompactActionButton>
 
-      <section className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--app-border)] pb-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <ClientLogo client={client} />
-
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
-                Client Details
-              </p>
-
-              <h2 className="mt-2 truncate text-2xl font-black text-white">
-                {client.businessName}
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-400">
-                Contact: {client.name}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onOpenEdit(client)}
-            >
-              Edit
-            </Button>
-
-            <Button type="button" variant="ghost" onClick={onClose}>
-              ✕
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Status
-            </p>
-            <p className="mt-2 font-bold text-white">{client.status}</p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Email
-            </p>
-            <p className="mt-2 break-words font-bold text-white">
-              {client.email}
-            </p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Phone
-            </p>
-            <p className="mt-2 font-bold text-white">{client.phone}</p>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+            Close
+          </CompactActionButton>
+        </>
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
           <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Website
+            Status
           </p>
-
-          {client.website ? (
-            <a
-              href={client.website}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-block text-sm font-black uppercase tracking-widest text-[var(--app-accent)] transition hover:text-white"
-            >
-              Visit Website
-            </a>
-          ) : (
-            <p className="mt-3 text-sm text-slate-400">No website added.</p>
-          )}
+          <p className="mt-2 font-bold text-white">{client.status}</p>
         </div>
 
-        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
           <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Notes
+            Email
           </p>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            {client.notes}
+          <p className="mt-2 break-words font-bold text-white">
+            {client.email}
           </p>
         </div>
-      </section>
-    </div>
+
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+            Phone
+          </p>
+          <p className="mt-2 font-bold text-white">{client.phone}</p>
+        </div>
+      </div>
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+        <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+          Website
+        </p>
+
+        {client.website ? (
+          <a
+            href={client.website}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-block text-sm font-black uppercase tracking-widest text-[var(--app-accent)] transition hover:text-white"
+          >
+            Visit Website
+          </a>
+        ) : (
+          <p className="mt-3 text-sm text-slate-400">No website added.</p>
+        )}
+      </div>
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+        <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+          Notes
+        </p>
+        <p className="mt-3 text-sm leading-6 text-slate-300">{client.notes}</p>
+      </div>
+    </DashboardModal>
   );
-}
-
-function emptyField(value, fallback = "") {
-  if (
-    value === "No email" ||
-    value === "No phone" ||
-    value === "No notes added yet." ||
-    value === "Unnamed Client"
-  ) {
-    return fallback;
-  }
-
-  return value || fallback;
 }
 
 function ClientFormModal({ open, client, onClose }) {
@@ -603,184 +506,154 @@ function ClientFormModal({ open, client, onClose }) {
 
   const isEditing = Boolean(client?.id);
   const action = isEditing ? updateClientRecord : createClientRecord;
+  const formId = isEditing ? "edit-client-form" : "new-client-form";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
-      <button
-        type="button"
-        aria-label={isEditing ? "Close edit client form" : "Close new client form"}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <DashboardModal
+      open={open}
+      eyebrow="Client Profile"
+      title={isEditing ? "Edit Client" : "New Client"}
+      description={
+        isEditing
+          ? "Update client contact info, status, notes, and account details."
+          : "Create a client profile that can be linked to projects, CRM leads, invoices, and future portal activity."
+      }
+      maxWidth="max-w-3xl"
+      onClose={onClose}
+      closeLabel={isEditing ? "Close edit client form" : "Close new client form"}
+      footer={
+        <>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+          >
+            Cancel
+          </CompactActionButton>
 
-      <section className="relative z-10 flex max-h-[82vh] w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
-        <div className="shrink-0 border-b border-[var(--app-border)] p-5">
-  <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
-              Client Profile
-            </p>
+          <CompactActionButton type="submit" form={formId} variant="primary">
+            {isEditing ? "Save Changes" : "Save Client"}
+          </CompactActionButton>
+        </>
+      }
+    >
+      <form
+        id={formId}
+        action={action}
+        onSubmit={() => {
+          onClose();
+        }}
+        className="space-y-5"
+      >
+        {isEditing && <input type="hidden" name="clientId" value={client.id} />}
 
-            <h2 className="mt-2 text-2xl font-black text-white">
-              {isEditing ? "Edit Client" : "New Client"}
-            </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Business Name" required>
+            <input
+              name="businessName"
+              required
+              defaultValue={emptyField(client?.businessName)}
+              placeholder="Business or organization name"
+              className="dvs-form-input"
+            />
+          </FormField>
 
-            <p className="mt-1 text-sm text-slate-400">
-              {isEditing
-                ? "Update client contact info, status, notes, and account details."
-                : "Create a client profile that can be linked to projects, CRM leads, invoices, and future portal activity."}
-            </p>
-          </div>
+          <FormField label="Contact Name">
+            <input
+              name="contactName"
+              defaultValue={emptyField(client?.name)}
+              placeholder="Primary contact name"
+              className="dvs-form-input"
+            />
+          </FormField>
 
-          <Button type="button" variant="ghost" onClick={onClose}>
-  ✕
-</Button>
-  </div>
-</div>
+          <FormField label="Email">
+            <input
+              name="email"
+              type="email"
+              defaultValue={emptyField(client?.email)}
+              placeholder="email@example.com"
+              className="dvs-form-input"
+            />
+          </FormField>
 
-<form
-  action={action}
-  onSubmit={() => {
-    onClose();
-  }}
-  className="flex min-h-0 flex-1 flex-col"
->
-  {isEditing && <input type="hidden" name="clientId" value={client.id} />}
+          <FormField label="Phone">
+            <input
+              name="phone"
+              defaultValue={emptyField(client?.phone)}
+              placeholder="(555) 000-0000"
+              className="dvs-form-input"
+            />
+          </FormField>
 
-  <div className="space-y-5 overflow-y-auto p-5">
-    <div className="grid gap-4 md:grid-cols-2">
-      <FormField label="Business Name" required>
-        <input
-          name="businessName"
-          required
-          defaultValue={emptyField(client?.businessName)}
-          placeholder="Business or organization name"
-          className="dvs-form-input"
-        />
-      </FormField>
+          <FormField label="Website">
+            <input
+              name="website"
+              defaultValue={emptyField(client?.website)}
+              placeholder="example.com"
+              className="dvs-form-input"
+            />
+          </FormField>
 
-      <FormField label="Contact Name">
-        <input
-          name="contactName"
-          defaultValue={emptyField(client?.name)}
-          placeholder="Primary contact name"
-          className="dvs-form-input"
-        />
-      </FormField>
+          <FormField label="Status">
+            <select
+              name="status"
+              defaultValue={client?.rawStatus || "active"}
+              className="dvs-form-input"
+            >
+              <option value="lead">Lead</option>
+              <option value="active">Active</option>
+              <option value="past">Past</option>
+              <option value="archived">Archived</option>
+            </select>
+          </FormField>
 
-      <FormField label="Email">
-        <input
-          name="email"
-          type="email"
-          defaultValue={emptyField(client?.email)}
-          placeholder="email@example.com"
-          className="dvs-form-input"
-        />
-      </FormField>
+          <FormField label="Logo URL">
+            <input
+              name="logoUrl"
+              defaultValue={client?.logoUrl || ""}
+              placeholder="https://example.com/logo.png"
+              className="dvs-form-input"
+            />
+          </FormField>
+        </div>
 
-      <FormField label="Phone">
-        <input
-          name="phone"
-          defaultValue={emptyField(client?.phone)}
-          placeholder="(555) 000-0000"
-          className="dvs-form-input"
-        />
-      </FormField>
-
-      <FormField label="Website">
-        <input
-          name="website"
-          defaultValue={emptyField(client?.website)}
-          placeholder="example.com"
-          className="dvs-form-input"
-        />
-      </FormField>
-
-      <FormField label="Status">
-        <select
-          name="status"
-          defaultValue={client?.rawStatus || "active"}
-          className="dvs-form-input"
-        >
-          <option value="lead">Lead</option>
-          <option value="active">Active</option>
-          <option value="past">Past</option>
-          <option value="archived">Archived</option>
-        </select>
-      </FormField>
-
-      <FormField label="Logo URL">
-        <input
-          name="logoUrl"
-          defaultValue={client?.logoUrl || ""}
-          placeholder="https://example.com/logo.png"
-          className="dvs-form-input"
-        />
-      </FormField>
-    </div>
-
-    <FormField label="Notes">
-      <textarea
-        name="notes"
-        rows="4"
-        defaultValue={emptyField(client?.notes)}
-        placeholder="Add account notes, preferences, context, or next steps..."
-        className="dvs-form-input resize-none"
-      />
-    </FormField>
-  </div>
-
-  <div className="shrink-0 border-t border-[var(--app-border)] bg-[#071018]/95 p-5 backdrop-blur">
-    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-      <Button type="button" variant="secondary" onClick={onClose}>
-        Cancel
-      </Button>
-
-      <Button type="submit">
-        {isEditing ? "Save Changes" : "Save Client"}
-      </Button>
-    </div>
-  </div>
-</form>
-      </section>
-    </div>
-  );
-}
-
-function FormField({ label, required = false, children }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">
-        {label}
-        {required && <span className="text-[var(--app-accent)]"> *</span>}
-      </span>
-
-      {children}
-    </label>
+        <FormField label="Notes">
+          <textarea
+            name="notes"
+            rows="4"
+            defaultValue={emptyField(client?.notes)}
+            placeholder="Add account notes, preferences, context, or next steps..."
+            className="dvs-form-input resize-none"
+          />
+        </FormField>
+      </form>
+    </DashboardModal>
   );
 }
 
 export default function ClientsList({ clients = [] }) {
   const [activeTab, setActiveTab] = useState("active");
-const [selectedIds, setSelectedIds] = useState([]);
-const [detailsClient, setDetailsClient] = useState(null);
-const [editingClient, setEditingClient] = useState(null);
-const [clientFormOpen, setClientFormOpen] = useState(false);
-const [searchValue, setSearchValue] = useState("");
-const [statusValue, setStatusValue] = useState("all");
-useEffect(() => {
-  function handleOpenNewClient() {
-    setDetailsClient(null);
-    setEditingClient(null);
-    setClientFormOpen(true);
-  }
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [detailsClient, setDetailsClient] = useState(null);
+  const [editingClient, setEditingClient] = useState(null);
+  const [clientFormOpen, setClientFormOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [statusValue, setStatusValue] = useState("all");
 
-  window.addEventListener("dvs-open-new-client", handleOpenNewClient);
+  useEffect(() => {
+    function handleOpenNewClient() {
+      setDetailsClient(null);
+      setEditingClient(null);
+      setClientFormOpen(true);
+    }
 
-  return () => {
-    window.removeEventListener("dvs-open-new-client", handleOpenNewClient);
-  };
-}, []);
+    window.addEventListener("dvs-open-new-client", handleOpenNewClient);
+
+    return () => {
+      window.removeEventListener("dvs-open-new-client", handleOpenNewClient);
+    };
+  }, []);
 
   const counts = useMemo(
     () => ({
@@ -828,19 +701,20 @@ useEffect(() => {
         : [...currentIds, clientId]
     );
   }
-function openEditClient(client) {
-  setDetailsClient(null);
-  setEditingClient(client);
-  setClientFormOpen(true);
-}
-
-function closeClientForm() {
-  setEditingClient(null);
-  setClientFormOpen(false);
-}
 
   function clearSelection() {
     setSelectedIds([]);
+  }
+
+  function openEditClient(client) {
+    setDetailsClient(null);
+    setEditingClient(client);
+    setClientFormOpen(true);
+  }
+
+  function closeClientForm() {
+    setEditingClient(null);
+    setClientFormOpen(false);
   }
 
   return (
@@ -867,12 +741,12 @@ function closeClientForm() {
           />
 
           <ClientDirectory
-  clients={visibleClients}
-  selectedIds={selectedIds}
-  onToggleSelected={handleToggleSelected}
-  onOpenDetails={setDetailsClient}
-  onOpenEdit={openEditClient}
-/>
+            clients={visibleClients}
+            selectedIds={selectedIds}
+            onToggleSelected={handleToggleSelected}
+            onOpenDetails={setDetailsClient}
+            onOpenEdit={openEditClient}
+          />
 
           <div className="text-sm text-[var(--app-text-muted)]">
             Showing {visibleClients.length} of{" "}
@@ -882,16 +756,16 @@ function closeClientForm() {
       </div>
 
       <ClientDetailsModal
-  client={detailsClient}
-  onClose={() => setDetailsClient(null)}
-  onOpenEdit={openEditClient}
-/>
+        client={detailsClient}
+        onClose={() => setDetailsClient(null)}
+        onOpenEdit={openEditClient}
+      />
 
-<ClientFormModal
-  open={clientFormOpen}
-  client={editingClient}
-  onClose={closeClientForm}
-/>
+      <ClientFormModal
+        open={clientFormOpen}
+        client={editingClient}
+        onClose={closeClientForm}
+      />
     </>
   );
 }
