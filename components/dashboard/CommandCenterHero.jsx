@@ -1,145 +1,78 @@
 import CommandQuickActions from "./CommandQuickActions.jsx";
 
-function SignalRow({ signal }) {
-  const toneClass =
-    signal.tone === "danger"
-      ? "text-red-200"
-      : signal.tone === "warning"
-        ? "text-yellow-100"
-        : signal.tone === "neutral"
-          ? "text-[var(--app-text-muted)]"
-          : "text-[var(--app-accent-text)]";
-
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-[var(--radius-md)] border border-white/10 bg-black/35 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--app-text-soft)]">
-        {signal.label}
-      </span>
-
-      <span className={`text-sm font-black ${toneClass}`}>{signal.value}</span>
-    </div>
-  );
-}
-
-function HeroStat({ stat }) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-cyan-300/15 bg-black/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-md">
-      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-text-soft)]">
-        {stat.label}
-      </p>
-
-      <p className="mt-2 text-2xl font-black leading-none text-white">
-        {stat.value}
-      </p>
-
-      <p className="mt-1 text-xs font-semibold text-[var(--app-text-muted)]">
-        {stat.detail}
-      </p>
-    </div>
-  );
-}
-
 export default function CommandCenterHero({
   firstName,
   organizationName,
   statusSentence,
-  heroStats = [],
-  systemSignals = [],
 }) {
-  const visibleStats = heroStats.slice(0, 3);
-  const visibleSignals = systemSignals.slice(0, 4);
-
   return (
-    <section className="relative overflow-hidden rounded-[var(--radius-xl)] border border-cyan-300/35 bg-[#03070d] shadow-[0_30px_120px_rgba(0,0,0,0.58)]">
+    <section className="relative overflow-hidden rounded-[var(--radius-xl)] border border-[#5cf4ec]/30 bg-[#03070d] shadow-[0_18px_56px_rgba(0,0,0,0.38)]">
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[url('/images/dashboard/dvs-hero.png')] bg-cover bg-center opacity-80"
+        className="absolute inset-0 bg-[url('/images/dashboard/dvs-hero.png')] bg-cover bg-[center_right] opacity-82"
       />
 
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,4,7,0.96)_0%,rgba(2,4,7,0.82)_34%,rgba(2,4,7,0.48)_64%,rgba(2,4,7,0.2)_100%)]"
+        className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,4,7,0.95)_0%,rgba(2,4,7,0.72)_35%,rgba(2,4,7,0.3)_64%,rgba(2,4,7,0.1)_100%)]"
       />
 
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(92,244,236,0.22),transparent_30%),radial-gradient(circle_at_86%_72%,rgba(24,200,255,0.16),transparent_30%)]"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_15%_16%,rgba(92,244,236,0.14),transparent_27%),linear-gradient(rgba(92,244,236,0.021)_1px,transparent_1px),linear-gradient(90deg,rgba(92,244,236,0.015)_1px,transparent_1px)] bg-[size:auto,42px_42px,42px_42px]"
       />
 
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(rgba(92,244,236,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(92,244,236,0.025)_1px,transparent_1px)] bg-[size:52px_52px] opacity-70"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#5cf4ec] to-transparent opacity-75"
       />
 
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--app-accent)] to-transparent opacity-80"
-      />
+      <div className="relative z-10 grid min-h-[258px] gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_270px] lg:items-center xl:grid-cols-[minmax(0,1fr)_282px] 2xl:min-h-[278px]">
+        <div className="max-w-[500px]">
+          <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#5cf4ec]">
+            DVS Command Center
+          </p>
 
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-cyan-300/70 via-transparent to-cyan-300/30"
-      />
+          <span
+            aria-hidden="true"
+            className="mt-2 block h-[2px] w-36 rounded-full bg-gradient-to-r from-[#5cf4ec] to-transparent shadow-[0_0_16px_rgba(92,244,236,0.45)]"
+          />
 
-      <div className="relative z-10 grid min-h-[380px] gap-6 p-5 md:p-7 xl:min-h-[420px] xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
-        <div className="flex min-h-[310px] flex-col justify-between xl:min-h-[360px]">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-[var(--radius-md)] border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.28em] text-[var(--app-accent)] shadow-[0_0_24px_rgba(92,244,236,0.16)] backdrop-blur">
-                DVS Command Center
-              </span>
+          <h1 className="mt-5 max-w-[470px] text-[36px] font-black leading-[0.96] tracking-tight text-white md:text-[40px] xl:text-[42px]">
+            Welcome back, {firstName}.
+          </h1>
 
-              <span className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.055] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--app-text-soft)] backdrop-blur">
-                Live Workspace
-              </span>
-            </div>
+          <p className="mt-3 text-[11px] font-black uppercase tracking-[0.24em] text-[#bffffb]">
+            {organizationName}
+          </p>
 
-            <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[0.95] tracking-tight text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.65)] md:text-5xl xl:text-6xl">
-              Command center online, {firstName}.
-            </h1>
+          <p className="mt-3 max-w-[410px] text-[13px] font-semibold leading-5 text-slate-300">
+            {statusSentence}
+          </p>
 
-            <p className="mt-4 text-sm font-black uppercase tracking-[0.22em] text-[var(--app-accent-text)]">
-              {organizationName}
-            </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-[10px] font-semibold text-[var(--app-text-muted)]">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#5cf4ec] shadow-[0_0_14px_rgba(92,244,236,0.75)]" />
+              All systems operational
+            </span>
 
-            <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-slate-300 md:text-lg">
-              {statusSentence}
-            </p>
+            <span className="hidden h-4 w-px bg-white/15 sm:block" />
+
+            <span className="inline-flex items-center gap-2">
+              <span className="text-[#5cf4ec]">↻</span>
+              Updated just now
+            </span>
           </div>
-
-          {visibleStats.length > 0 && (
-            <div className="mt-8 grid gap-3 md:grid-cols-3 xl:max-w-3xl">
-              {visibleStats.map((stat) => (
-                <HeroStat key={stat.label} stat={stat} />
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="rounded-[var(--radius-xl)] border border-cyan-300/20 bg-[#02070d]/75 p-4 shadow-[0_0_54px_rgba(92,244,236,0.14)] backdrop-blur-xl">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--app-accent)]">
-                Signal Stack
-              </p>
-
-              <p className="mt-1 text-sm font-semibold text-[var(--app-text-muted)]">
-                Operational quick read
+        <div className="lg:flex lg:justify-end">
+          <div className="w-full rounded-[22px] border border-white/10 bg-[#071017]/86 p-3.5 shadow-[0_16px_48px_rgba(0,0,0,0.34),0_0_22px_rgba(92,244,236,0.08)] backdrop-blur-xl lg:max-w-[270px] xl:max-w-[282px]">
+            <div className="mb-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#5cf4ec]">
+                Quick Actions
               </p>
             </div>
 
-            <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[var(--app-accent)] shadow-[0_0_18px_rgba(92,244,236,0.9)]" />
-          </div>
-
-          {visibleSignals.length > 0 && (
-            <div className="space-y-2">
-              {visibleSignals.map((signal) => (
-                <SignalRow key={signal.id} signal={signal} />
-              ))}
-            </div>
-          )}
-
-          <div className="mt-4 border-t border-white/10 pt-4">
             <CommandQuickActions />
           </div>
         </div>

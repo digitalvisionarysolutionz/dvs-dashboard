@@ -4,36 +4,63 @@ function dispatchDashboardEvent(eventName) {
   window.dispatchEvent(new CustomEvent(eventName));
 }
 
-const baseActionClass =
-  "inline-flex h-9 items-center justify-center rounded-[var(--radius-md)] border px-3 text-xs font-black uppercase tracking-wider transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]";
+const actions = [
+  {
+    label: "New Project",
+    description: "Create a new client project",
+    eventName: "dvs-open-new-project",
+    icon: "+",
+  },
+  {
+    label: "New Client",
+    description: "Add a new client to CRM",
+    eventName: "dvs-open-new-client",
+    icon: "♙",
+  },
+  {
+    label: "New Lead",
+    description: "Capture a new opportunity",
+    eventName: "dvs-open-new-lead",
+    icon: "◎",
+  },
+  {
+    label: "Schedule Meeting",
+    description: "Book time on calendar",
+    eventName: "dvs-open-schedule-meeting",
+    icon: "▣",
+  },
+];
+
+function QuickActionButton({ action }) {
+  return (
+    <button
+      type="button"
+      onClick={() => dispatchDashboardEvent(action.eventName)}
+      className="group flex h-[44px] w-full items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.045] px-3 text-left transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec]"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border border-white/5 bg-white/[0.055] text-[15px] font-black text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] group-hover:text-[#5cf4ec]">
+        {action.icon}
+      </span>
+
+      <span className="min-w-0">
+        <span className="block text-[12px] font-black leading-tight text-white">
+          {action.label}
+        </span>
+
+        <span className="mt-0.5 block truncate text-[10px] font-semibold leading-tight text-[var(--app-text-muted)]">
+          {action.description}
+        </span>
+      </span>
+    </button>
+  );
+}
 
 export default function CommandQuickActions() {
-  // TODO: Wire dvs-open-new-client and dvs-open-new-lead in the GlobalModals phase.
   return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() => dispatchDashboardEvent("dvs-open-new-project")}
-        className={`${baseActionClass} border-cyan-300/40 bg-[var(--app-accent)] text-[#031012] shadow-[0_0_24px_rgba(92,244,236,0.22)] hover:brightness-110`}
-      >
-        + New Project
-      </button>
-
-      <button
-        type="button"
-        onClick={() => dispatchDashboardEvent("dvs-open-new-client")}
-        className={`${baseActionClass} border-white/10 bg-white/[0.055] text-slate-200 hover:border-cyan-300/35 hover:bg-white/[0.085] hover:text-white`}
-      >
-        + New Client
-      </button>
-
-      <button
-        type="button"
-        onClick={() => dispatchDashboardEvent("dvs-open-new-lead")}
-        className={`${baseActionClass} border-white/10 bg-white/[0.055] text-slate-200 hover:border-cyan-300/35 hover:bg-white/[0.085] hover:text-white`}
-      >
-        + New Lead
-      </button>
+    <div className="grid gap-2">
+      {actions.map((action) => (
+        <QuickActionButton key={action.label} action={action} />
+      ))}
     </div>
   );
 }
