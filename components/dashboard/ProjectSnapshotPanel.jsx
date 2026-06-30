@@ -2,121 +2,102 @@ import Link from "next/link";
 import DashboardPanel from "./DashboardPanel.jsx";
 import DashboardEmptyState from "./DashboardEmptyState.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
-import PriorityBadge from "../ui/PriorityBadge.jsx";
-import ProgressBar from "../ui/ProgressBar.jsx";
+
+const DVS_CYAN = "#5cf4ec";
+
+function getInitials(value = "") {
+  return String(value)
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function ProjectIcon({ project }) {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[#5cf4ec]/20 bg-[#5cf4ec]/[0.055] text-[11px] font-black text-[#5cf4ec] shadow-[0_0_18px_rgba(92,244,236,0.12)]">
+      {getInitials(project.name) || "P"}
+    </span>
+  );
+}
+
+function CompactProgress({ value = 0 }) {
+  const safeValue = Math.min(Math.max(Number(value) || 0, 0), 100);
+
+  return (
+    <div className="flex min-w-[120px] items-center gap-2">
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+        <div
+          className="h-full rounded-full bg-[#5cf4ec] shadow-[0_0_14px_rgba(92,244,236,0.5)]"
+          style={{ width: `${safeValue}%` }}
+        />
+      </div>
+
+      <span className="w-8 shrink-0 text-right text-[10px] font-black text-slate-300">
+        {safeValue}%
+      </span>
+    </div>
+  );
+}
+
+function ProjectRow({ project }) {
+  return (
+    <Link
+      href={project.href}
+      className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.025] px-3 py-2.5 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045] min-[1320px]:grid-cols-[minmax(0,1.2fr)_minmax(120px,0.7fr)_auto]"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <ProjectIcon project={project} />
+
+        <div className="min-w-0">
+          <h4 className="truncate text-[12px] font-black leading-tight text-white">
+            {project.name}
+          </h4>
+
+          <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--app-text-muted)]">
+            {project.clientName || "Internal"}
+          </p>
+        </div>
+      </div>
+
+      <div className="hidden min-[1320px]:block">
+        <CompactProgress value={project.progress} />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden min-[1180px]:block min-[1320px]:hidden">
+          <CompactProgress value={project.progress} />
+        </div>
+
+        <StatusBadge>{project.status}</StatusBadge>
+      </div>
+    </Link>
+  );
+}
 
 export default function ProjectSnapshotPanel({ projects = [] }) {
-  const [featuredProject, ...secondaryProjects] = projects;
+  const visibleProjects = projects.slice(0, 4);
 
   return (
     <DashboardPanel
       title="Project Snapshot"
-      eyebrow="Active Work"
+      eyebrow="Project Snapshot"
       actionHref="/projects"
-      actionLabel="View All"
+      actionLabel="View All Projects"
+      className="p-4"
     >
-      {projects.length === 0 ? (
+      {visibleProjects.length === 0 ? (
         <DashboardEmptyState
           title="No active projects"
-          description="Open projects will appear here with status, priority, due date, and progress."
+          description="Open projects will appear here with status and progress."
         />
       ) : (
-        <div className="space-y-4">
-          {featuredProject && (
-            <Link
-              href={featuredProject.href}
-              className="group block rounded-[var(--radius-xl)] border border-cyan-300/25 bg-[#050b12] p-5 shadow-[0_22px_70px_rgba(0,0,0,0.3)] transition hover:border-cyan-300/45"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--app-accent)]">
-                    Featured Mission
-                  </p>
-                  <h4 className="mt-2 text-2xl font-black tracking-tight text-white">
-                    {featuredProject.name}
-                  </h4>
-                  <p className="mt-1 text-sm font-semibold text-[var(--app-text-muted)]">
-                    {featuredProject.clientName}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge>{featuredProject.status}</StatusBadge>
-                  <PriorityBadge priority={featuredProject.priority} />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <ProgressBar value={featuredProject.progress} />
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--app-text-soft)]">
-                    Progress
-                  </p>
-                  <p className="mt-1 text-lg font-black text-white">
-                    {featuredProject.progressLabel}
-                  </p>
-                </div>
-                <div className="rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--app-text-soft)]">
-                    Due State
-                  </p>
-                  <p className="mt-1 text-lg font-black text-[var(--app-accent-text)]">
-                    {featuredProject.dueState}
-                  </p>
-                </div>
-                <div className="rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--app-text-soft)]">
-                    Due Date
-                  </p>
-                  <p className="mt-1 text-lg font-black text-white">
-                    {featuredProject.dueDateShort}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          )}
-
-          {secondaryProjects.length > 0 && (
-            <div className="grid gap-3 lg:grid-cols-3">
-              {secondaryProjects.map((project) => (
-                <Link
-                  key={project.id}
-                  href={project.href}
-                  className="rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-black/20 p-4 transition hover:border-[var(--app-border-strong)] hover:bg-black/30"
-                >
-                  <div className="min-w-0">
-                    <h4 className="truncate font-bold text-[var(--app-text)]">
-                      {project.name}
-                    </h4>
-                    <p className="mt-1 truncate text-sm text-[var(--app-text-muted)]">
-                      {project.clientName}
-                    </p>
-                  </div>
-
-                  <div className="mt-4">
-                    <ProgressBar value={project.progress} />
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-xs text-[var(--app-text-soft)]">
-                      {project.dueDateShort}
-                    </span>
-                    <PriorityBadge priority={project.priority} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          <Link
-            href="/projects"
-            className="inline-flex text-xs font-bold uppercase tracking-widest text-[var(--app-accent-text)] transition hover:text-white"
-          >
-            Open Projects →
-          </Link>
+        <div className="space-y-2">
+          {visibleProjects.map((project) => (
+            <ProjectRow key={project.id} project={project} />
+          ))}
         </div>
       )}
     </DashboardPanel>

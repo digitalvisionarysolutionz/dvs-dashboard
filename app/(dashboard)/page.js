@@ -32,7 +32,7 @@ export default async function HomePage() {
   );
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-2.5">
       <CommandCenterHero
         firstName={workspace.user.firstName || "there"}
         organizationName={workspace.organization.name}
@@ -41,14 +41,17 @@ export default async function HomePage() {
 
       <CommandMetrics metrics={commandCenter.metrics} />
 
-      <NeedsAttentionPanel items={commandCenter.needsAttention} />
-
-      <div className="grid gap-5 xl:grid-cols-12">
-        <div className="xl:col-span-7">
+      <div className="grid gap-2.5 xl:grid-cols-12">
+        <div className="xl:col-span-4">
           <ProjectSnapshotPanel projects={commandCenter.projectSnapshot} />
         </div>
-        <div className="xl:col-span-5">
+
+        <div className="xl:col-span-4">
           <CrmSnapshotPanel crm={commandCenter.crmSnapshot} />
+        </div>
+
+        <div className="xl:col-span-4">
+          <NeedsAttentionPanel items={commandCenter.needsAttention} />
         </div>
       </div>
 

@@ -5,48 +5,72 @@ import DashboardEmptyState from "./DashboardEmptyState.jsx";
 const badgeToneClass = {
   danger: "border-red-300/30 bg-red-400/10 text-red-200",
   warning: "border-yellow-300/30 bg-yellow-300/10 text-yellow-100",
-  accent:
-    "border-[var(--app-border-strong)] bg-[var(--app-accent-soft)] text-[var(--app-accent-text)]",
+  accent: "border-[#5cf4ec]/35 bg-[#5cf4ec]/10 text-[#5cf4ec]",
 };
 
+const dotToneClass = {
+  danger: "bg-red-300 shadow-[0_0_14px_rgba(252,165,165,0.45)]",
+  warning: "bg-yellow-200 shadow-[0_0_14px_rgba(254,240,138,0.35)]",
+  accent: "bg-[#5cf4ec] shadow-[0_0_14px_rgba(92,244,236,0.55)]",
+};
+
+function AttentionRow({ item }) {
+  const tone = item.badgeTone || "accent";
+
+  return (
+    <Link
+      href={item.href}
+      className="grid min-h-[54px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.025] px-3 py-2.5 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
+    >
+      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border border-white/10 bg-white/[0.045]">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            dotToneClass[tone] || dotToneClass.accent
+          }`}
+        />
+      </span>
+
+      <div className="min-w-0">
+        <h4 className="truncate text-[12px] font-black text-white">
+          {item.title}
+        </h4>
+
+        <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--app-text-muted)]">
+          {item.subtitle}
+        </p>
+      </div>
+
+      <span
+        className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${
+          badgeToneClass[tone] || badgeToneClass.accent
+        }`}
+      >
+        {item.badge}
+      </span>
+    </Link>
+  );
+}
+
 export default function NeedsAttentionPanel({ items = [] }) {
+  const visibleItems = items.slice(0, 4);
+
   return (
     <DashboardPanel
       title="Needs Attention"
-      eyebrow="Priority Queue"
+      eyebrow="Needs Attention"
       actionHref="/projects"
-      actionLabel="Review"
+      actionLabel="View All"
+      className="p-4"
     >
-      {items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <DashboardEmptyState
           title="Nothing urgent right now"
-          description="High-priority projects, due dates, follow-ups, and proposal-stage leads will appear here."
+          description="Priority items will appear here when something needs attention."
         />
       ) : (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              className="flex items-start justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-black/20 p-4 transition hover:border-[var(--app-border-strong)] hover:bg-black/30"
-            >
-              <div className="min-w-0">
-                <h4 className="truncate font-bold text-[var(--app-text)]">
-                  {item.title}
-                </h4>
-                <p className="mt-1 truncate text-sm text-[var(--app-text-muted)]">
-                  {item.subtitle}
-                </p>
-              </div>
-
-              <span
-                className={`shrink-0 rounded-[var(--radius-md)] border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                  badgeToneClass[item.badgeTone] || badgeToneClass.accent
-                }`}
-              >
-                {item.badge}
-              </span>
-            </Link>
+        <div className="space-y-2">
+          {visibleItems.map((item) => (
+            <AttentionRow key={item.id} item={item} />
           ))}
         </div>
       )}

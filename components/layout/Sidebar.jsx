@@ -62,49 +62,49 @@ export default function Sidebar({ brand }) {
   }
 
   return (
-    <aside className="dvs-sidebar-bg hidden h-screen w-[284px] shrink-0 overflow-hidden border-r border-cyan-300/15 px-4 py-4 text-white lg:block">
+    <aside className="dvs-sidebar-bg hidden h-screen w-[258px] shrink-0 overflow-hidden border-r border-[#5cf4ec]/15 px-3.5 py-3.5 text-white lg:block">
       <div className="relative z-10 flex h-full min-h-0 flex-col">
-        <div className="mb-5 flex shrink-0 items-center gap-3 px-1">
+        <div className="mb-4 flex shrink-0 items-center gap-2.5 px-1">
           {brand.logo?.src ? (
-            <div className="flex h-12 w-12 items-center justify-center">
+            <div className="flex h-11 w-11 items-center justify-center">
               <Image
                 src={brand.logo.src}
                 alt={brand.logo.alt}
-                width={48}
-                height={48}
-                className="h-full w-full object-contain drop-shadow-[0_0_22px_rgba(92,244,236,0.5)]"
+                width={44}
+                height={44}
+                className="h-full w-full object-contain drop-shadow-[0_0_20px_rgba(92,244,236,0.48)]"
                 priority
               />
             </div>
           ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[#5cf4ec]/35 bg-[#5cf4ec]/10 text-sm font-black text-cyan-100">
               {brand.shortName.charAt(0)}
             </div>
           )}
 
           {brand.logo?.showText && (
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.34em] text-white">
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-black uppercase tracking-[0.32em] text-white">
                 {brand.businessName}
               </p>
-              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
+              <p className="mt-1 truncate text-[7px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
                 Digital Visionary Solutions
               </p>
             </div>
           )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
           <NavMenu />
         </div>
 
-        <div className="relative mt-4 shrink-0">
+        <div className="relative mt-3 shrink-0">
           {isProfileMenuOpen && (
-            <div className="absolute bottom-full left-0 right-0 z-30 mb-3 rounded-[var(--radius-lg)] border border-cyan-300/15 bg-[#071018] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.72)]">
+            <div className="absolute bottom-full left-0 right-0 z-30 mb-2.5 rounded-[var(--radius-lg)] border border-[#5cf4ec]/15 bg-[#071018] p-1.5 shadow-[0_22px_70px_rgba(0,0,0,0.72)]">
               <Link
                 href="/settings"
                 onClick={closeProfileMenu}
-                className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
+                className="flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-2 text-[12px] font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
               >
                 <UserIcon />
                 Manage Account
@@ -113,7 +113,7 @@ export default function Sidebar({ brand }) {
               <Link
                 href="/settings"
                 onClick={closeProfileMenu}
-                className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
+                className="flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-2 text-[12px] font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
               >
                 <SettingsIcon />
                 Settings
@@ -122,7 +122,7 @@ export default function Sidebar({ brand }) {
               <form action="/logout" method="post">
                 <button
                   type="submit"
-                  className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 text-left text-sm font-bold text-red-200 transition hover:bg-red-400/10"
+                  className="flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-2 text-left text-[12px] font-bold text-red-200 transition hover:bg-red-400/10"
                 >
                   <LogoutIcon />
                   Log Out
@@ -134,20 +134,20 @@ export default function Sidebar({ brand }) {
           <button
             type="button"
             onClick={toggleProfileMenu}
-            className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border border-white/10 bg-[#050b12] p-3 text-left shadow-[0_0_28px_rgba(92,244,236,0.08)] transition hover:border-cyan-300/25 hover:bg-[#071018]"
+            className="flex w-full items-center gap-2.5 rounded-[var(--radius-lg)] border border-white/10 bg-[#050b12] p-2.5 text-left shadow-[0_0_24px_rgba(92,244,236,0.07)] transition hover:border-[#5cf4ec]/25 hover:bg-[#071018]"
             aria-expanded={isProfileMenuOpen}
             aria-label="Open profile menu"
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/20 bg-white/[0.07] text-sm font-black text-white">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#5cf4ec]/20 bg-white/[0.07] text-[12px] font-black text-white">
               {brand.userInitials}
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-[#061019] bg-green-400" />
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-black text-white">
+              <p className="truncate text-[12px] font-black text-white">
                 {brand.user.fullName}
               </p>
-              <p className="truncate text-xs capitalize text-slate-400">
+              <p className="truncate text-[11px] capitalize text-slate-400">
                 {brand.user.role}
               </p>
             </div>

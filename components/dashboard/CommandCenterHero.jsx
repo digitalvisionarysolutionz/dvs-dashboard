@@ -27,7 +27,7 @@ export default function CommandCenterHero({
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#5cf4ec] to-transparent opacity-75"
       />
 
-      <div className="relative z-10 grid min-h-[258px] gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_270px] lg:items-center xl:grid-cols-[minmax(0,1fr)_282px] 2xl:min-h-[278px]">
+      <div className="relative z-10 grid min-h-[258px] gap-4 p-5 md:grid-cols-[minmax(0,1fr)_246px] md:items-center lg:grid-cols-[minmax(0,1fr)_270px] xl:grid-cols-[minmax(0,1fr)_282px] 2xl:min-h-[278px]">
         <div className="max-w-[500px]">
           <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#5cf4ec]">
             DVS Command Center
@@ -38,7 +38,7 @@ export default function CommandCenterHero({
             className="mt-2 block h-[2px] w-36 rounded-full bg-gradient-to-r from-[#5cf4ec] to-transparent shadow-[0_0_16px_rgba(92,244,236,0.45)]"
           />
 
-          <h1 className="mt-5 max-w-[470px] text-[36px] font-black leading-[0.96] tracking-tight text-white md:text-[40px] xl:text-[42px]">
+          <h1 className="mt-5 max-w-[470px] text-[34px] font-black leading-[0.96] tracking-tight text-white md:text-[36px] lg:text-[40px] xl:text-[42px]">
             Welcome back, {firstName}.
           </h1>
 
@@ -65,8 +65,8 @@ export default function CommandCenterHero({
           </div>
         </div>
 
-        <div className="lg:flex lg:justify-end">
-          <div className="w-full rounded-[22px] border border-white/10 bg-[#071017]/86 p-3.5 shadow-[0_16px_48px_rgba(0,0,0,0.34),0_0_22px_rgba(92,244,236,0.08)] backdrop-blur-xl lg:max-w-[270px] xl:max-w-[282px]">
+        <div className="md:flex md:justify-end">
+          <div className="w-full rounded-[22px] border border-white/10 bg-[#071017]/86 p-3 shadow-[0_16px_48px_rgba(0,0,0,0.34),0_0_22px_rgba(92,244,236,0.08)] backdrop-blur-xl md:max-w-[246px] lg:max-w-[270px] xl:max-w-[282px]">
             <div className="mb-3">
               <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#5cf4ec]">
                 Quick Actions

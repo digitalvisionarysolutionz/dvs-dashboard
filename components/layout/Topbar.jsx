@@ -9,7 +9,7 @@ import FormField from "../ui/FormField.jsx";
 
 function SearchIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
       <path
         d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm5.5-2.5L21 21"
         stroke="currentColor"
@@ -22,7 +22,7 @@ function SearchIcon() {
 
 function BellIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
       <path
         d="M18 9a6 6 0 0 0-12 0c0 7-2.5 8-2.5 8h17S18 16 18 9ZM10 20h4"
         stroke="currentColor"
@@ -36,7 +36,7 @@ function BellIcon() {
 
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
       <path
         d="M4 6h16v12H4V6Zm1 1 7 6 7-6"
         stroke="currentColor"
@@ -49,7 +49,7 @@ function MailIcon() {
 
 function SunIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
       <path
         d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10ZM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
         stroke="currentColor"
@@ -65,12 +65,12 @@ function IconButton({ children, label, badge }) {
     <button
       type="button"
       aria-label={label}
-      className="relative hidden h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-white/10 bg-[#071018] text-slate-200 transition hover:border-cyan-300/30 hover:bg-[#0b1722] hover:text-white md:flex"
+      className="relative hidden h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-white/10 bg-[#071018] text-slate-200 transition hover:border-[#5cf4ec]/30 hover:bg-[#0b1722] hover:text-white md:flex"
     >
       {children}
 
       {badge && (
-        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--app-accent)] px-1 text-[10px] font-black text-[#031012]">
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#5cf4ec] px-1 text-[9px] font-black text-[#031012]">
           {badge}
         </span>
       )}
@@ -119,11 +119,12 @@ function NewProjectModal({ open, onClose }) {
 
   return (
     <DashboardModal
-  open={open}
-  eyebrow="Project Creation"
-  title="New Project"
-description="Choose an existing client or create a new one with this project."  maxWidth="max-w-3xl"
-  onClose={onClose}
+      open={open}
+      eyebrow="Project Creation"
+      title="New Project"
+      description="Choose an existing client or create a new one with this project."
+      maxWidth="max-w-3xl"
+      onClose={onClose}
       closeLabel="Close new project form"
       footer={
         <>
@@ -135,7 +136,11 @@ description="Choose an existing client or create a new one with this project."  
             Cancel
           </CompactActionButton>
 
-          <CompactActionButton type="submit" form="new-project-form" variant="primary">
+          <CompactActionButton
+            type="submit"
+            form="new-project-form"
+            variant="primary"
+          >
             Create Project
           </CompactActionButton>
         </>
@@ -147,9 +152,9 @@ description="Choose an existing client or create a new one with this project."  
         onSubmit={() => {
           onClose();
         }}
-        className="space-y-5"
+        className="space-y-4"
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2">
           <FormField label="Project Name" required>
             <input
               name="projectName"
@@ -214,25 +219,25 @@ description="Choose an existing client or create a new one with this project."  
           </FormField>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-  <FormField label="Description">
-    <textarea
-      name="description"
-      rows="3"
-      placeholder="Project scope, deliverables, or goals..."
-      className="dvs-form-input resize-none"
-    />
-  </FormField>
+        <div className="grid gap-3 md:grid-cols-2">
+          <FormField label="Description">
+            <textarea
+              name="description"
+              rows="3"
+              placeholder="Project scope, deliverables, or goals..."
+              className="dvs-form-input resize-none"
+            />
+          </FormField>
 
-  <FormField label="Notes">
-    <textarea
-      name="notes"
-      rows="3"
-      placeholder="Internal notes or next steps..."
-      className="dvs-form-input resize-none"
-    />
-  </FormField>
-</div>
+          <FormField label="Notes">
+            <textarea
+              name="notes"
+              rows="3"
+              placeholder="Internal notes or next steps..."
+              className="dvs-form-input resize-none"
+            />
+          </FormField>
+        </div>
       </form>
     </DashboardModal>
   );
@@ -255,36 +260,36 @@ export default function Topbar({ onMenuClick }) {
 
   return (
     <>
-      <header className="dvs-topbar sticky top-0 z-40 border-b border-white/10 px-4 py-3 text-white md:px-6">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+      <header className="dvs-topbar sticky top-0 z-40 border-b border-white/10 px-3 py-2 text-white md:px-4">
+        <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <Button
               variant="secondary"
               onClick={onMenuClick}
               aria-label="Open navigation menu"
-              className="flex h-10 w-10 px-0 lg:hidden"
+              className="flex h-9 w-9 px-0 lg:hidden"
             >
-              <span className="text-xl leading-none">☰</span>
+              <span className="text-lg leading-none">☰</span>
             </Button>
 
-            <label className="relative hidden w-full max-w-xl md:block">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            <label className="relative hidden w-full max-w-[520px] md:block">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                 <SearchIcon />
               </span>
 
               <input
                 type="search"
                 placeholder="Search clients, projects, tasks..."
-                className="h-11 w-full rounded-[var(--radius-lg)] border border-white/10 bg-[#071018] pl-12 pr-16 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/45 focus:bg-[#0b1722]"
+                className="h-9 w-full rounded-[var(--radius-lg)] border border-white/10 bg-[#071018] pl-10 pr-14 text-[12px] text-white outline-none transition placeholder:text-slate-500 focus:border-[#5cf4ec]/45 focus:bg-[#0b1722]"
               />
 
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] border border-white/10 bg-[#020407] px-2 py-1 text-[11px] font-black text-slate-400">
+              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] border border-white/10 bg-[#020407] px-1.5 py-0.5 text-[10px] font-black text-slate-400">
                 ⌘ K
               </span>
             </label>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-2">
             <IconButton label="Theme">
               <SunIcon />
             </IconButton>
@@ -299,7 +304,7 @@ export default function Topbar({ onMenuClick }) {
 
             <Button
               type="button"
-              className="hidden sm:inline-flex"
+              className="hidden h-9 px-4 text-[12px] sm:inline-flex"
               onClick={() => setProjectModalOpen(true)}
             >
               + New Project
