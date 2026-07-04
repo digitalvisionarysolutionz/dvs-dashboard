@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { createProject } from "../../app/(dashboard)/projects/actions.js";
+import { createClientRecord } from "../../app/(dashboard)/clients/actions.js";
+import { createLead } from "../../app/(dashboard)/crm/actions.js";
 import Button from "../ui/Button.jsx";
 import CompactActionButton from "../ui/CompactActionButton.jsx";
 import DashboardModal from "../ui/DashboardModal.jsx";
 import FormField from "../ui/FormField.jsx";
+
+const strategyCallLink = "https://calendar.app.google/cDsCsTyMjrqVpqPd9";
 
 function SearchIcon() {
   return (
@@ -128,11 +132,7 @@ function NewProjectModal({ open, onClose }) {
       closeLabel="Close new project form"
       footer={
         <>
-          <CompactActionButton
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-          >
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
             Cancel
           </CompactActionButton>
 
@@ -243,18 +243,379 @@ function NewProjectModal({ open, onClose }) {
   );
 }
 
+function NewClientModal({ open, onClose }) {
+  return (
+    <DashboardModal
+      open={open}
+      eyebrow="Client Profile"
+      title="New Client"
+      description="Create a client profile that can be linked to projects, CRM leads, invoices, and future portal activity."
+      maxWidth="max-w-3xl"
+      onClose={onClose}
+      closeLabel="Close new client form"
+      footer={
+        <>
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </CompactActionButton>
+
+          <CompactActionButton
+            type="submit"
+            form="dashboard-new-client-form"
+            variant="primary"
+          >
+            Save Client
+          </CompactActionButton>
+        </>
+      }
+    >
+      <form
+        id="dashboard-new-client-form"
+        action={createClientRecord}
+        onSubmit={() => {
+          onClose();
+        }}
+        className="space-y-4"
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <FormField label="Business Name" required>
+            <input
+              name="businessName"
+              required
+              placeholder="Business or organization name"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Contact Name">
+            <input
+              name="contactName"
+              placeholder="Primary contact name"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Email">
+            <input
+              name="email"
+              type="email"
+              placeholder="email@example.com"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Phone">
+            <input
+              name="phone"
+              placeholder="(555) 000-0000"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Website">
+            <input
+              name="website"
+              placeholder="example.com"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Status">
+            <select name="status" defaultValue="active" className="dvs-form-input">
+              <option value="lead">Lead</option>
+              <option value="active">Active</option>
+              <option value="past">Past</option>
+              <option value="archived">Archived</option>
+            </select>
+          </FormField>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <FormField label="Logo URL">
+            <input
+              name="logoUrl"
+              placeholder="https://example.com/logo.png"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Notes">
+            <textarea
+              name="notes"
+              rows="2"
+              placeholder="Client notes, service details, preferences, or next steps..."
+              className="dvs-form-input resize-none"
+            />
+          </FormField>
+        </div>
+      </form>
+    </DashboardModal>
+  );
+}
+
+function NewLeadModal({ open, onClose }) {
+  return (
+    <DashboardModal
+      open={open}
+      eyebrow="CRM Lead"
+      title="New Lead"
+      description="Add a manual lead now. Later, your forms can feed this same CRM pipeline."
+      maxWidth="max-w-3xl"
+      onClose={onClose}
+      closeLabel="Close new lead form"
+      footer={
+        <>
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </CompactActionButton>
+
+          <CompactActionButton
+            type="submit"
+            form="dashboard-new-lead-form"
+            variant="primary"
+          >
+            Save Lead
+          </CompactActionButton>
+        </>
+      }
+    >
+      <form
+        id="dashboard-new-lead-form"
+        action={createLead}
+        onSubmit={() => {
+          onClose();
+        }}
+        className="space-y-4"
+      >
+        <input type="hidden" name="formSource" value="Manual Entry" />
+        <input type="hidden" name="formName" value="Manual CRM Entry" />
+        <input type="hidden" name="formId" value="" />
+        <input type="hidden" name="submissionId" value="" />
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <FormField label="Business Name" required>
+            <input
+              name="businessName"
+              required
+              placeholder="Business or organization name"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Contact Name">
+            <input
+              name="contactName"
+              placeholder="Primary contact name"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Email">
+            <input
+              name="email"
+              type="email"
+              placeholder="email@example.com"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Phone">
+            <input
+              name="phone"
+              placeholder="(555) 000-0000"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Website">
+            <input
+              name="website"
+              placeholder="example.com"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Location">
+            <input
+              name="location"
+              placeholder="City, State"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Lead Source">
+            <select name="source" defaultValue="Manual" className="dvs-form-input">
+              <option value="Manual">Manual</option>
+              <option value="Website Form">Website Form</option>
+              <option value="DVS Intake">DVS Intake</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Referral">Referral</option>
+              <option value="Partner">Partner</option>
+              <option value="Cold Outreach">Cold Outreach</option>
+              <option value="Event">Event</option>
+            </select>
+          </FormField>
+
+          <FormField label="Service Interest">
+            <select
+              name="serviceInterest"
+              defaultValue="Website / Web Development"
+              className="dvs-form-input"
+            >
+              <option value="Website / Web Development">
+                Website / Web Development
+              </option>
+              <option value="CRM / Dashboard System">
+                CRM / Dashboard System
+              </option>
+              <option value="Automation">Automation</option>
+              <option value="Lead Generation">Lead Generation</option>
+              <option value="Photo / Video">Photo / Video</option>
+              <option value="SEO / Google Business Profile">
+                SEO / Google Business Profile
+              </option>
+              <option value="Social Media / Content">
+                Social Media / Content
+              </option>
+              <option value="General inquiry">General inquiry</option>
+            </select>
+          </FormField>
+
+          <FormField label="Stage">
+            <select name="stage" defaultValue="new_lead" className="dvs-form-input">
+              <option value="new_lead">New Lead</option>
+              <option value="contacted">Contacted</option>
+              <option value="discovery">Discovery</option>
+              <option value="proposal">Proposal</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+          </FormField>
+
+          <FormField label="Priority">
+            <select name="priority" defaultValue="medium" className="dvs-form-input">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </FormField>
+
+          <FormField label="Estimated Value">
+            <input
+              name="estimatedValue"
+              type="number"
+              min="0"
+              step="50"
+              placeholder="Estimated project value"
+              className="dvs-form-input"
+            />
+          </FormField>
+
+          <FormField label="Next Follow-Up">
+            <input name="nextFollowUp" type="date" className="dvs-form-input" />
+          </FormField>
+        </div>
+
+        <FormField label="Notes">
+          <textarea
+            name="notes"
+            rows="2"
+            placeholder="Add lead notes, needs, next steps, or form details..."
+            className="dvs-form-input resize-none"
+          />
+        </FormField>
+      </form>
+    </DashboardModal>
+  );
+}
+
+function ScheduleMeetingModal({ open, onClose }) {
+  return (
+    <DashboardModal
+      open={open}
+      eyebrow="Strategy Call"
+      title="Schedule Meeting"
+      description="Open the DVS Tech strategy call booking calendar."
+      maxWidth="max-w-xl"
+      onClose={onClose}
+      closeLabel="Close schedule meeting modal"
+      footer={
+        <>
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+            Close
+          </CompactActionButton>
+
+          <a
+            href={strategyCallLink}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center rounded-[var(--radius-md)] border border-[#5cf4ec]/45 bg-[#5cf4ec] px-4 py-2.5 text-sm font-black text-[#031012] shadow-[0_0_24px_rgba(92,244,236,0.2)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407]"
+          >
+            Open Calendar
+          </a>
+        </>
+      }
+    >
+      <div className="rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.035] p-4">
+        <p className="text-sm font-semibold leading-6 text-slate-300">
+          This will open your Google Calendar booking page in a new tab. Later,
+          we can replace this with an internal calendar module.
+        </p>
+
+        <p className="mt-3 break-all text-xs font-semibold text-[#5cf4ec]">
+          {strategyCallLink}
+        </p>
+      </div>
+    </DashboardModal>
+  );
+}
+
 export default function Topbar({ onMenuClick }) {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
   useEffect(() => {
     function handleOpenNewProject() {
       setProjectModalOpen(true);
     }
 
+    function handleOpenNewClient() {
+      setClientModalOpen(true);
+    }
+
+    function handleOpenNewLead() {
+      setLeadModalOpen(true);
+    }
+
+    function handleOpenScheduleMeeting() {
+      setScheduleModalOpen(true);
+    }
+
     window.addEventListener("dvs-open-new-project", handleOpenNewProject);
+    window.addEventListener("dvs-dashboard-open-new-client", handleOpenNewClient);
+    window.addEventListener("dvs-dashboard-open-new-lead", handleOpenNewLead);
+    window.addEventListener(
+      "dvs-dashboard-open-schedule-meeting",
+      handleOpenScheduleMeeting
+    );
 
     return () => {
       window.removeEventListener("dvs-open-new-project", handleOpenNewProject);
+      window.removeEventListener(
+        "dvs-dashboard-open-new-client",
+        handleOpenNewClient
+      );
+      window.removeEventListener(
+        "dvs-dashboard-open-new-lead",
+        handleOpenNewLead
+      );
+      window.removeEventListener(
+        "dvs-dashboard-open-schedule-meeting",
+        handleOpenScheduleMeeting
+      );
     };
   }, []);
 
@@ -316,6 +677,21 @@ export default function Topbar({ onMenuClick }) {
       <NewProjectModal
         open={projectModalOpen}
         onClose={() => setProjectModalOpen(false)}
+      />
+
+      <NewClientModal
+        open={clientModalOpen}
+        onClose={() => setClientModalOpen(false)}
+      />
+
+      <NewLeadModal
+        open={leadModalOpen}
+        onClose={() => setLeadModalOpen(false)}
+      />
+
+      <ScheduleMeetingModal
+        open={scheduleModalOpen}
+        onClose={() => setScheduleModalOpen(false)}
       />
     </>
   );

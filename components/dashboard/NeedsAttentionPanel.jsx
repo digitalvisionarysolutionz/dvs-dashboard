@@ -20,9 +20,9 @@ function AttentionRow({ item }) {
   return (
     <Link
       href={item.href}
-      className="grid min-h-[54px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.025] px-3 py-2.5 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
+      className="grid min-h-[56px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.025] px-3 py-2.5 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
     >
-      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border border-white/10 bg-white/[0.045]">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-white/10 bg-white/[0.045]">
         <span
           className={`h-2 w-2 rounded-full ${
             dotToneClass[tone] || dotToneClass.accent
@@ -52,7 +52,7 @@ function AttentionRow({ item }) {
 }
 
 export default function NeedsAttentionPanel({ items = [] }) {
-  const visibleItems = items.slice(0, 4);
+  const visibleItems = items.slice(0, 5);
 
   return (
     <DashboardPanel
@@ -60,7 +60,7 @@ export default function NeedsAttentionPanel({ items = [] }) {
       eyebrow="Needs Attention"
       actionHref="/projects"
       actionLabel="View All"
-      className="p-4"
+      className="h-full p-4"
     >
       {visibleItems.length === 0 ? (
         <DashboardEmptyState

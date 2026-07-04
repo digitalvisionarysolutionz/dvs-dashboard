@@ -13,20 +13,20 @@ const actions = [
   },
   {
     label: "New Client",
-    description: "Add a new client to CRM",
-    eventName: "dvs-open-new-client",
+    description: "Add a new client profile",
+    eventName: "dvs-dashboard-open-new-client",
     icon: "♙",
   },
   {
     label: "New Lead",
     description: "Capture a new opportunity",
-    eventName: "dvs-open-new-lead",
+    eventName: "dvs-dashboard-open-new-lead",
     icon: "◎",
   },
   {
     label: "Schedule Meeting",
-    description: "Book time on calendar",
-    eventName: "dvs-open-schedule-meeting",
+    description: "Open booking calendar",
+    eventName: "dvs-dashboard-open-schedule-meeting",
     icon: "▣",
   },
 ];
@@ -36,7 +36,7 @@ function QuickActionButton({ action }) {
     <button
       type="button"
       onClick={() => dispatchDashboardEvent(action.eventName)}
-      className="group flex h-[44px] w-full items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.045] px-3 text-left transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec]"
+      className="group flex h-[44px] w-full touch-manipulation items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.045] px-3 text-left transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec]"
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border border-white/5 bg-white/[0.055] text-[15px] font-black text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] group-hover:text-[#5cf4ec]">
         {action.icon}

@@ -23,10 +23,10 @@ function buildBrand(workspace) {
     userInitials: user?.initials || brandConfig.userInitials || "DS",
 
     logo: {
-      src: organization?.logoUrl || brandConfig.logo?.src || "",
-      alt: `${organization?.name || brandConfig.businessName || "DVS Tech"} logo`,
-      showText: brandConfig.logo?.showText ?? true,
-    },
+  src: brandConfig.logo?.src || organization?.logoUrl || "",
+  alt: brandConfig.logo?.alt || `${organization?.name || brandConfig.businessName || "DVS Tech"} logo`,
+  showText: brandConfig.logo?.showText ?? true,
+},
 
     navItems: brandConfig.navItems || [],
 

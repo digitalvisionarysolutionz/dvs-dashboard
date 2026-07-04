@@ -46,7 +46,10 @@ function StageRow({ stage }) {
           <p className="truncate text-[10px] font-bold text-slate-300">
             {stage.label}
           </p>
-          <p className="text-[10px] font-black text-[#5cf4ec]">{stage.count}</p>
+
+          <p className="text-[10px] font-black text-[#5cf4ec]">
+            {stage.count}
+          </p>
         </div>
 
         <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
@@ -68,7 +71,7 @@ function HotLeadRow({ lead }) {
   return (
     <Link
       href={lead.href}
-      className="grid min-h-[50px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-md)] border border-white/10 bg-white/[0.025] px-3 py-2 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
+      className="grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-md)] border border-white/10 bg-white/[0.025] px-3 py-2.5 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
     >
       <div className="min-w-0">
         <p className="truncate text-[12px] font-black text-white">
@@ -112,7 +115,7 @@ export default function CrmSnapshotPanel({ crm }) {
       eyebrow="CRM Pipeline"
       actionHref="/crm"
       actionLabel="View Pipeline"
-      className="p-4"
+      className="h-full p-4"
     >
       <div className="grid gap-4 min-[640px]:grid-cols-[minmax(0,1fr)_128px] min-[640px]:items-center min-[1350px]:grid-cols-[128px_minmax(0,1fr)]">
         <div className="order-2 min-[640px]:order-1 min-[1350px]:order-none">
@@ -132,6 +135,7 @@ export default function CrmSnapshotPanel({ crm }) {
                 <p className="text-[10px] font-black text-slate-300">
                   {activeLeadCount} active
                 </p>
+
                 <p className="mt-0.5 text-[10px] font-semibold text-[var(--app-text-muted)]">
                   {followUpsDue} follow-ups
                 </p>

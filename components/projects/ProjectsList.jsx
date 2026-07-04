@@ -220,12 +220,7 @@ function FilterBar({
         <option className="bg-[#071018]" value="ready_for_review">
           Ready for Review
         </option>
-        <option className="bg-[#071018]" value="completed">
-          Completed
-        </option>
-        <option className="bg-[#071018]" value="archived">
-          Archived
-        </option>
+        
       </select>
 
       <select
@@ -792,6 +787,8 @@ function DetailsModal({ project, onClose, onOpenEdit }) {
     return null;
   }
 
+  const displayProgress = getDisplayProgress(project);
+
   return (
     <DashboardModal
       open={Boolean(project)}
@@ -817,55 +814,71 @@ function DetailsModal({ project, onClose, onOpenEdit }) {
         </>
       }
     >
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Status
-          </p>
-          <p className="mt-2 font-bold text-white">{project.status}</p>
+      <div className="space-y-3.5">
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+              Status
+            </p>
+
+            <div className="mt-2">
+              <StatusBadge>{project.status}</StatusBadge>
+            </div>
+          </div>
+
+          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+              Priority
+            </p>
+
+            <p className="mt-2 text-sm font-black text-white">
+              {project.priority}
+            </p>
+          </div>
+
+          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+              Due
+            </p>
+
+            <p className="mt-2 text-sm font-black text-white">
+              {project.dueDate}
+            </p>
+          </div>
+
+          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                Progress
+              </p>
+
+              <p className="text-sm font-black text-white">{displayProgress}%</p>
+            </div>
+
+            <ProgressBar value={displayProgress} size="compact" />
+          </div>
         </div>
 
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Priority
-          </p>
-          <p className="mt-2 font-bold text-white">{project.priority}</p>
-        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="min-h-[150px] rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] px-4 py-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+              Description
+            </p>
 
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Due
-          </p>
-          <p className="mt-2 font-bold text-white">{project.dueDate}</p>
-        </div>
-      </div>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">
+              {project.description}
+            </p>
+          </div>
 
-      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-        <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-          Progress
-        </p>
-        <div className="mt-3">
-          <ProgressBar value={getDisplayProgress(project)} />
-        </div>
-      </div>
+          <div className="min-h-[150px] rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] px-4 py-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+              Internal Notes
+            </p>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Description
-          </p>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            {project.description}
-          </p>
-        </div>
-
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Internal Notes
-          </p>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            {project.notes}
-          </p>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">
+              {project.notes}
+            </p>
+          </div>
         </div>
       </div>
     </DashboardModal>

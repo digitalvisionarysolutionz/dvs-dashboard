@@ -22,7 +22,7 @@ function ActivityRow({ item }) {
   return (
     <Link
       href={item.href}
-      className="relative grid min-h-[44px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-md)] border border-white/10 bg-white/[0.025] px-3 py-2 pl-8 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
+      className="relative grid min-h-[46px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-md)] border border-white/10 bg-white/[0.025] px-3 py-2 pl-8 transition hover:border-[#5cf4ec]/35 hover:bg-white/[0.045]"
     >
       <span
         aria-hidden="true"
@@ -91,14 +91,18 @@ export default function RecentActivityPanel({
   recentClients = [],
   recentProjects = [],
 }) {
-  const visibleActivity = activity.slice(0, 3);
+  const visibleActivity = activity.slice(0, 4);
   const visibleClients = recentClients.slice(0, 4);
   const visibleProjects = recentProjects.slice(0, 2);
 
   return (
     <div className="grid gap-3 xl:grid-cols-12">
       <div className="xl:col-span-5">
-        <DashboardPanel title="Recent Activity" eyebrow="Recent Activity" className="p-4">
+        <DashboardPanel
+          title="Recent Activity"
+          eyebrow="Recent Activity"
+          className="h-full p-4"
+        >
           {visibleActivity.length === 0 ? (
             <DashboardEmptyState
               title="No recent activity yet"
@@ -120,7 +124,7 @@ export default function RecentActivityPanel({
           eyebrow="Recent Clients"
           actionHref="/clients"
           actionLabel="View All Clients"
-          className="p-4"
+          className="h-full p-4"
         >
           {visibleClients.length === 0 ? (
             <DashboardEmptyState

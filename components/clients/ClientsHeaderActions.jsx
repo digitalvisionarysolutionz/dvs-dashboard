@@ -9,12 +9,13 @@ export default function ClientsHeaderActions() {
 
   return (
     <>
-      <Button variant="secondary" className="whitespace-nowrap">
+      <Button type="button" variant="secondary" size="sm" className="whitespace-nowrap">
         Export
       </Button>
 
       <Button
         type="button"
+        size="sm"
         className="whitespace-nowrap"
         onClick={openNewClientModal}
       >
