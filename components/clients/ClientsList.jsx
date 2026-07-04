@@ -57,20 +57,22 @@ function DotsIcon() {
 function ClientLogo({ client }) {
   if (client.logoUrl) {
     return (
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-md)] border border-[var(--app-border)] bg-black/30 sm:h-14 sm:w-14">
-        <Image
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-md)] border border-[#5cf4ec]/25 bg-white/[0.035]">
+        <img
           src={client.logoUrl}
           alt={`${client.businessName} logo`}
-          width={56}
-          height={56}
-          className="h-full w-full object-contain p-2"
+          className="h-full w-full object-contain"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
         />
       </div>
     );
   }
 
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--app-border-strong)] bg-[var(--app-accent-soft)] text-sm font-black tracking-widest text-[var(--app-accent)] shadow-[0_0_20px_rgba(92,244,236,0.12)] sm:h-14 sm:w-14">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[#5cf4ec]/25 bg-[#5cf4ec]/10 text-sm font-black text-[#5cf4ec]">
       {client.initials}
     </div>
   );
@@ -177,11 +179,22 @@ function FilterBar({ searchValue, onSearchChange, statusValue, onStatusChange })
 function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      setDeleteOpen(false);
+    }
+  }, [selectedIds.length]);
+
   if (selectedIds.length === 0) {
     return null;
   }
 
   const selectedJson = JSON.stringify(selectedIds);
+
+  function handleActionSubmit() {
+    setDeleteOpen(false);
+    onClearSelection();
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--app-border-strong)] bg-[#071018] p-3 shadow-[0_0_28px_rgba(92,244,236,0.12)] sm:flex-row sm:items-center sm:justify-between">
@@ -192,7 +205,7 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
 
       <div className="flex flex-wrap items-center gap-2">
         {activeTab === "archive" ? (
-          <form action={moveSelectedClientsToActive}>
+          <form action={moveSelectedClientsToActive} onSubmit={handleActionSubmit}>
             <input type="hidden" name="clientIds" value={selectedJson} />
 
             <Button type="submit" size="sm">
@@ -200,7 +213,7 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
             </Button>
           </form>
         ) : (
-          <form action={archiveSelectedClients}>
+          <form action={archiveSelectedClients} onSubmit={handleActionSubmit}>
             <input type="hidden" name="clientIds" value={selectedJson} />
 
             <Button type="submit" variant="secondary" size="sm">
@@ -226,7 +239,7 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
                 This permanently deletes selected clients.
               </p>
 
-              <form action={deleteSelectedClients}>
+              <form action={deleteSelectedClients} onSubmit={handleActionSubmit}>
                 <input type="hidden" name="clientIds" value={selectedJson} />
 
                 <button
@@ -249,7 +262,15 @@ function BatchToolbar({ selectedIds, activeTab, onClearSelection }) {
           )}
         </div>
 
-        <Button type="button" variant="ghost" size="sm" onClick={onClearSelection}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setDeleteOpen(false);
+            onClearSelection();
+          }}
+        >
           Clear
         </Button>
       </div>
@@ -662,6 +683,18 @@ export default function ClientsList({ clients = [] }) {
     }),
     [clients]
   );
+useEffect(() => {
+  setSelectedIds((currentIds) => {
+    if (currentIds.length === 0) {
+      return currentIds;
+    }
+
+    const existingClientIds = new Set(clients.map((client) => client.id));
+    const nextIds = currentIds.filter((id) => existingClientIds.has(id));
+
+    return nextIds.length === currentIds.length ? currentIds : nextIds;
+  });
+}, [clients]);
 
   const visibleClients = useMemo(() => {
     let nextClients = getTabClients(clients, activeTab);
