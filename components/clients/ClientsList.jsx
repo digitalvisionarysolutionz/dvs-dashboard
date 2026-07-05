@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import Button from "../ui/Button.jsx";
 import CompactActionButton from "../ui/CompactActionButton.jsx";
 import DashboardModal from "../ui/DashboardModal.jsx";
@@ -74,6 +73,25 @@ function ClientLogo({ client }) {
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[#5cf4ec]/25 bg-[#5cf4ec]/10 text-sm font-black text-[#5cf4ec]">
       {client.initials}
+    </div>
+  );
+}
+
+function ClientLogoPreview({ client, size = "md" }) {
+  const sizeClass = size === "lg" ? "h-20 w-20" : "h-14 w-14";
+
+  return (
+    <div className="flex items-center gap-3">
+      <ClientLogo client={client} />
+
+      <div className="min-w-0">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#5cf4ec]">
+          Client Logo
+        </p>
+        <p className="mt-1 text-xs font-semibold text-slate-400">
+          {client?.logoUrl ? "Logo uploaded" : "Using initials fallback"}
+        </p>
+      </div>
     </div>
   );
 }
@@ -352,7 +370,7 @@ function ClientRow({
 }) {
   return (
     <article
-      className={`grid gap-4 border-b border-[var(--app-border)] px-4 py-4 transition last:border-b-0 hover:bg-white/[0.035] lg:grid-cols-[minmax(0,1.6fr)_minmax(220px,0.9fr)_auto] lg:items-center ${
+      className={`grid gap-4 border-b border-[var(--app-border)] px-4 py-4 transition last:border-b-0 hover:bg-white/[0.035] lg:grid-cols-[minmax(0,1.55fr)_minmax(240px,0.95fr)_auto] lg:items-center ${
         client.isArchived ? "opacity-75" : ""
       }`}
     >
@@ -380,7 +398,7 @@ function ClientRow({
             Contact: {client.name}
           </p>
 
-          <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-[var(--app-text-muted)]">
+          <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-[var(--app-text-muted)]">
             {client.notes}
           </p>
         </div>
@@ -393,9 +411,11 @@ function ClientRow({
 
         <p className="mt-1 text-[var(--app-text-muted)]">{client.phone}</p>
 
-        <p className="mt-3 text-xs font-bold uppercase tracking-widest text-[var(--app-text-soft)]">
-          Website inside details
-        </p>
+        {(client.location || client.address) && (
+          <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--app-text-muted)]">
+            {client.location || client.address}
+          </p>
+        )}
       </div>
 
       <RowActions
@@ -466,55 +486,82 @@ function ClientDetailsModal({ client, onClose, onOpenEdit }) {
         </>
       }
     >
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Status
-          </p>
-          <p className="mt-2 font-bold text-white">{client.status}</p>
+      <div className="space-y-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3.5">
+          <ClientLogoPreview client={client} />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+              Status
+            </p>
+            <div className="mt-2">
+              <StatusBadge>{client.status}</StatusBadge>
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+              Email
+            </p>
+            <p className="mt-2 break-words text-sm font-black leading-5 text-white">
+              {client.email}
+            </p>
+          </div>
+
+          <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+              Phone
+            </p>
+            <p className="mt-2 break-words text-sm font-black leading-5 text-white">
+              {client.phone}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+              Location
+            </p>
+
+            <p className="mt-3 whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+              {client.location || "No location added."}
+            </p>
+          </div>
+
+          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+              Website
+            </p>
+
+            {client.website ? (
+              <a
+                href={client.website}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex min-h-9 touch-manipulation items-center rounded-[var(--radius-md)] border border-[#5cf4ec]/30 bg-[#5cf4ec]/10 px-3 text-xs font-black uppercase tracking-[0.18em] text-[#5cf4ec] transition hover:bg-[#5cf4ec]/15 hover:text-white"
+              >
+                Visit Website
+              </a>
+            ) : (
+              <p className="mt-3 text-sm font-semibold leading-6 text-slate-400">
+                No website added.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Email
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+            Notes
           </p>
-          <p className="mt-2 break-words font-bold text-white">
-            {client.email}
+
+          <p className="mt-3 whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+            {client.notes}
           </p>
         </div>
-
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Phone
-          </p>
-          <p className="mt-2 font-bold text-white">{client.phone}</p>
-        </div>
-      </div>
-
-      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-        <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-          Website
-        </p>
-
-        {client.website ? (
-          <a
-            href={client.website}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-block text-sm font-black uppercase tracking-widest text-[var(--app-accent)] transition hover:text-white"
-          >
-            Visit Website
-          </a>
-        ) : (
-          <p className="mt-3 text-sm text-slate-400">No website added.</p>
-        )}
-      </div>
-
-      <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-        <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-          Notes
-        </p>
-        <p className="mt-3 text-sm leading-6 text-slate-300">{client.notes}</p>
       </div>
     </DashboardModal>
   );
@@ -559,14 +606,14 @@ function ClientFormModal({ open, client, onClose }) {
       }
     >
       <form
-        id={formId}
-        action={action}
-        onSubmit={() => {
-          onClose();
-        }}
-        className="space-y-5"
-      >
+  id={formId}
+  action={action}
+  onSubmit={onClose}
+  encType="multipart/form-data"
+  className="space-y-4"
+>
         {isEditing && <input type="hidden" name="clientId" value={client.id} />}
+        <input type="hidden" name="existingLogoPath" value={client?.logoPath || ""} />
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Business Name" required>
@@ -608,37 +655,73 @@ function ClientFormModal({ open, client, onClose }) {
           </FormField>
 
           <FormField label="Website">
-            <input
-              name="website"
-              defaultValue={emptyField(client?.website)}
-              placeholder="example.com"
-              className="dvs-form-input"
-            />
-          </FormField>
+  <input
+    name="website"
+    defaultValue={emptyField(client?.website)}
+    placeholder="example.com"
+    className="dvs-form-input"
+  />
+</FormField>
 
-          <FormField label="Status">
-            <select
-              name="status"
-              defaultValue={client?.rawStatus || "active"}
-              className="dvs-form-input"
-            >
-              <option value="lead">Lead</option>
-              <option value="active">Active</option>
-              <option value="past">Past</option>
-              <option value="archived">Archived</option>
-            </select>
-          </FormField>
+<FormField label="Location">
+  <input
+    name="location"
+    defaultValue={client?.location || ""}
+    placeholder="City, State"
+    className="dvs-form-input"
+  />
+</FormField>
 
-          <FormField label="Logo URL">
+<FormField label="Status">
+  <select
+    name="status"
+    defaultValue={client?.rawStatus || "active"}
+    className="dvs-form-input"
+  >
+    <option value="lead">Lead</option>
+    <option value="active">Active</option>
+    <option value="past">Past</option>
+    <option value="archived">Archived</option>
+  </select>
+</FormField>
+
+<FormField
+  label="Upload Logo"
+  description={
+    client?.logoPath
+      ? "Upload a new logo or remove the current one."
+      : "PNG, JPG, WEBP, or SVG. Max 5MB."
+  }
+>
+  <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.025] p-3">
+    {client && (
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <ClientLogoPreview client={client} />
+
+        {client.logoUrl && (
+          <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-red-300/25 bg-red-400/10 px-3 text-xs font-black uppercase tracking-[0.14em] text-red-200">
             <input
-              name="logoUrl"
-              defaultValue={client?.logoUrl || ""}
-              placeholder="https://example.com/logo.png"
-              className="dvs-form-input"
+              type="checkbox"
+              name="removeLogo"
+              className="accent-red-300"
             />
-          </FormField>
+            Remove
+          </label>
+        )}
+      </div>
+    )}
+
+    <input
+      name="logoFile"
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+      className="block w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 py-2.5 text-sm font-semibold text-[var(--app-text-muted)] file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[#5cf4ec] file:px-3 file:py-2 file:text-xs file:font-black file:text-[#031012] hover:border-[#5cf4ec]/35"
+    />
+  </div>
+</FormField>
+
         </div>
-
+      
         <FormField label="Notes">
           <textarea
             name="notes"

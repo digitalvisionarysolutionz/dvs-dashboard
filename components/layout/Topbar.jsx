@@ -275,6 +275,7 @@ function NewClientModal({ open, onClose }) {
         onSubmit={() => {
           onClose();
         }}
+        encType="multipart/form-data"
         className="space-y-4"
       >
         <div className="grid gap-3 md:grid-cols-2">
@@ -320,6 +321,14 @@ function NewClientModal({ open, onClose }) {
             />
           </FormField>
 
+          <FormField label="Location">
+            <input
+              name="location"
+              placeholder="Address, City, State, or service area"
+              className="dvs-form-input"
+            />
+          </FormField>
+
           <FormField label="Status">
             <select name="status" defaultValue="active" className="dvs-form-input">
               <option value="lead">Lead</option>
@@ -328,26 +337,28 @@ function NewClientModal({ open, onClose }) {
               <option value="archived">Archived</option>
             </select>
           </FormField>
-        </div>
 
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <FormField label="Logo URL">
+          <FormField
+            label="Upload Logo"
+            description="PNG, JPG, WEBP, or SVG. Max 5MB."
+          >
             <input
-              name="logoUrl"
-              placeholder="https://example.com/logo.png"
-              className="dvs-form-input"
-            />
-          </FormField>
-
-          <FormField label="Notes">
-            <textarea
-              name="notes"
-              rows="2"
-              placeholder="Client notes, service details, preferences, or next steps..."
-              className="dvs-form-input resize-none"
+              name="logoFile"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="block w-full cursor-pointer rounded-[var(--radius-md)] border border-white/10 bg-[#071018] px-3 py-2.5 text-sm font-semibold text-slate-400 file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[#5cf4ec] file:px-3 file:py-2 file:text-xs file:font-black file:text-[#031012] hover:border-[#5cf4ec]/35"
             />
           </FormField>
         </div>
+
+        <FormField label="Notes">
+          <textarea
+            name="notes"
+            rows="2"
+            placeholder="Client notes, service details, preferences, or next steps..."
+            className="dvs-form-input resize-none"
+          />
+        </FormField>
       </form>
     </DashboardModal>
   );

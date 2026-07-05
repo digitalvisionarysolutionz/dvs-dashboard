@@ -4,6 +4,16 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "../../../utils/supabase/server.js";
 import { getCurrentWorkspace } from "../../../lib/workspace.js";
 
+const LOGO_BUCKET = "client-logos";
+const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
+
+const ALLOWED_LOGO_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+]);
+
 async function getWorkspaceContext() {
   const supabase = await createClient();
 
@@ -32,54 +42,126 @@ function cleanText(value) {
 }
 
 function parseClientIds(value) {
-  if (!value) {
-    return [];
-  }
+  if (!value) return [];
 
   try {
     const parsed = JSON.parse(value);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter(Boolean);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
   } catch {
     return [];
   }
 }
 
-function buildClientPayload(formData, organizationId) {
+function getSafeFileExtension(file) {
+  const nameExtension = file.name?.split(".").pop()?.toLowerCase();
+
+  if (nameExtension && /^[a-z0-9]+$/.test(nameExtension)) {
+    return nameExtension;
+  }
+
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/jpeg") return "jpg";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/svg+xml") return "svg";
+
+  return "png";
+}
+
+async function deleteExistingLogo({ supabase, existingLogoPath }) {
+  if (!existingLogoPath) return;
+
+  await supabase.storage.from(LOGO_BUCKET).remove([existingLogoPath]);
+}
+
+async function uploadClientLogo({ supabase, organizationId, formData }) {
+  const logoFile = formData.get("logoFile");
+
+  if (!logoFile || typeof logoFile === "string" || logoFile.size === 0) {
+    return null;
+  }
+
+  if (!ALLOWED_LOGO_TYPES.has(logoFile.type)) {
+    throw new Error("Logo must be a PNG, JPG, WEBP, or SVG file.");
+  }
+
+  if (logoFile.size > MAX_LOGO_SIZE_BYTES) {
+    throw new Error("Logo file must be 5MB or smaller.");
+  }
+
+  const extension = getSafeFileExtension(logoFile);
+  const fileName = `logo-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+  const storagePath = `${organizationId}/clients/${fileName}`;
+
+  const { error } = await supabase.storage
+    .from(LOGO_BUCKET)
+    .upload(storagePath, logoFile, {
+      cacheControl: "3600",
+      contentType: logoFile.type,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Logo upload failed: ${error.message}`);
+  }
+
+  return storagePath;
+}
+
+async function buildClientPayload({ formData, organizationId, supabase }) {
   const businessName = cleanText(formData.get("businessName"));
   const contactName = cleanText(formData.get("contactName"));
+  const existingLogoPath = cleanText(formData.get("existingLogoPath"));
+  const removeLogo = formData.get("removeLogo") === "on";
 
   if (!businessName) {
     throw new Error("Business name is required.");
   }
 
-  return {
+  const uploadedLogoPath = await uploadClientLogo({
+    supabase,
+    organizationId,
+    formData,
+  });
+
+  const payload = {
     organization_id: organizationId,
     name: contactName || businessName,
     business_name: businessName,
     email: cleanText(formData.get("email")) || null,
     phone: cleanText(formData.get("phone")) || null,
     website: cleanText(formData.get("website")) || null,
+    location: cleanText(formData.get("location")) || null,
     status: cleanText(formData.get("status")) || "active",
     notes: cleanText(formData.get("notes")) || null,
-    logo_url: cleanText(formData.get("logoUrl")) || null,
   };
+
+  if (removeLogo) {
+    await deleteExistingLogo({ supabase, existingLogoPath });
+    payload.logo_path = null;
+    payload.logo_url = null;
+  }
+
+  if (uploadedLogoPath) {
+    await deleteExistingLogo({ supabase, existingLogoPath });
+    payload.logo_path = uploadedLogoPath;
+    payload.logo_url = null;
+  }
+
+  return payload;
 }
 
 export async function createClientRecord(formData) {
   const { supabase, organizationId } = await getWorkspaceContext();
 
-  const payload = buildClientPayload(formData, organizationId);
+  const payload = await buildClientPayload({
+    formData,
+    organizationId,
+    supabase,
+  });
 
   const { error } = await supabase.from("clients").insert(payload);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
   revalidatePath("/projects");
@@ -89,13 +171,15 @@ export async function createClientRecord(formData) {
 export async function updateClientRecord(formData) {
   const clientId = cleanText(formData.get("clientId"));
 
-  if (!clientId) {
-    throw new Error("Missing client ID.");
-  }
+  if (!clientId) throw new Error("Missing client ID.");
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
-  const payload = buildClientPayload(formData, organizationId);
+  const payload = await buildClientPayload({
+    formData,
+    organizationId,
+    supabase,
+  });
 
   const { error } = await supabase
     .from("clients")
@@ -103,9 +187,7 @@ export async function updateClientRecord(formData) {
     .eq("organization_id", organizationId)
     .eq("id", clientId);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
   revalidatePath("/projects");
@@ -114,10 +196,7 @@ export async function updateClientRecord(formData) {
 
 export async function archiveSelectedClients(formData) {
   const clientIds = parseClientIds(formData.get("clientIds"));
-
-  if (clientIds.length === 0) {
-    return;
-  }
+  if (clientIds.length === 0) return;
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
@@ -127,19 +206,14 @@ export async function archiveSelectedClients(formData) {
     .eq("organization_id", organizationId)
     .in("id", clientIds);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
 }
 
 export async function moveSelectedClientsToActive(formData) {
   const clientIds = parseClientIds(formData.get("clientIds"));
-
-  if (clientIds.length === 0) {
-    return;
-  }
+  if (clientIds.length === 0) return;
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
@@ -149,19 +223,14 @@ export async function moveSelectedClientsToActive(formData) {
     .eq("organization_id", organizationId)
     .in("id", clientIds);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
 }
 
 export async function deleteSelectedClients(formData) {
   const clientIds = parseClientIds(formData.get("clientIds"));
-
-  if (clientIds.length === 0) {
-    return;
-  }
+  if (clientIds.length === 0) return;
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
@@ -171,19 +240,14 @@ export async function deleteSelectedClients(formData) {
     .eq("organization_id", organizationId)
     .in("id", clientIds);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
 }
 
 export async function archiveSingleClient(formData) {
   const clientId = formData.get("clientId");
-
-  if (!clientId) {
-    return;
-  }
+  if (!clientId) return;
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
@@ -193,19 +257,14 @@ export async function archiveSingleClient(formData) {
     .eq("organization_id", organizationId)
     .eq("id", clientId);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
 }
 
 export async function moveSingleClientToActive(formData) {
   const clientId = formData.get("clientId");
-
-  if (!clientId) {
-    return;
-  }
+  if (!clientId) return;
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
@@ -215,19 +274,14 @@ export async function moveSingleClientToActive(formData) {
     .eq("organization_id", organizationId)
     .eq("id", clientId);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
 }
 
 export async function deleteSingleClient(formData) {
   const clientId = formData.get("clientId");
-
-  if (!clientId) {
-    return;
-  }
+  if (!clientId) return;
 
   const { supabase, organizationId } = await getWorkspaceContext();
 
@@ -237,9 +291,7 @@ export async function deleteSingleClient(formData) {
     .eq("organization_id", organizationId)
     .eq("id", clientId);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/clients");
 }
