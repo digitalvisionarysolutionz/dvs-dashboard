@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../../../utils/supabase/server.js";
-import { getCurrentWorkspace } from "../../../lib/workspace.js";
+import {
+  ADMIN_ROLES,
+  WRITE_ROLES,
+  getCurrentWorkspace,
+  requireWorkspaceRole,
+} from "../../../lib/workspace.js";
 
 const LOGO_BUCKET = "client-logos";
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
@@ -14,7 +19,10 @@ const ALLOWED_LOGO_TYPES = new Set([
   "image/svg+xml",
 ]);
 
-async function getWorkspaceContext() {
+async function getWorkspaceContext({
+  allowedRoles = WRITE_ROLES,
+  action = "manage clients",
+} = {}) {
   const supabase = await createClient();
 
   const {
@@ -31,8 +39,11 @@ async function getWorkspaceContext() {
     throw new Error("No active workspace found.");
   }
 
+  requireWorkspaceRole(workspace, allowedRoles, action);
+
   return {
     supabase,
+    workspace,
     organizationId: workspace.organization.id,
   };
 }
@@ -67,10 +78,28 @@ function getSafeFileExtension(file) {
   return "png";
 }
 
-async function deleteExistingLogo({ supabase, existingLogoPath }) {
-  if (!existingLogoPath) return;
+function isSafeOrgLogoPath(path, organizationId) {
+  const cleanedPath = cleanText(path);
 
-  await supabase.storage.from(LOGO_BUCKET).remove([existingLogoPath]);
+  if (!cleanedPath || !organizationId) {
+    return false;
+  }
+
+  return cleanedPath.startsWith(`${organizationId}/`);
+}
+
+async function deleteExistingLogo({ supabase, organizationId, existingLogoPath }) {
+  if (!isSafeOrgLogoPath(existingLogoPath, organizationId)) {
+    return;
+  }
+
+  const { error } = await supabase.storage
+    .from(LOGO_BUCKET)
+    .remove([existingLogoPath]);
+
+  if (error) {
+    console.error("Client logo delete error:", error.message);
+  }
 }
 
 async function uploadClientLogo({ supabase, organizationId, formData }) {
@@ -107,10 +136,33 @@ async function uploadClientLogo({ supabase, organizationId, formData }) {
   return storagePath;
 }
 
-async function buildClientPayload({ formData, organizationId, supabase }) {
+async function getExistingClientLogoPath({ supabase, organizationId, clientId }) {
+  if (!clientId) {
+    return "";
+  }
+
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, logo_path")
+    .eq("organization_id", organizationId)
+    .eq("id", clientId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.logo_path || "";
+}
+
+async function buildClientPayload({
+  formData,
+  organizationId,
+  supabase,
+  existingLogoPath = "",
+}) {
   const businessName = cleanText(formData.get("businessName"));
   const contactName = cleanText(formData.get("contactName"));
-  const existingLogoPath = cleanText(formData.get("existingLogoPath"));
   const removeLogo = formData.get("removeLogo") === "on";
 
   if (!businessName) {
@@ -136,13 +188,13 @@ async function buildClientPayload({ formData, organizationId, supabase }) {
   };
 
   if (removeLogo) {
-    await deleteExistingLogo({ supabase, existingLogoPath });
+    await deleteExistingLogo({ supabase, organizationId, existingLogoPath });
     payload.logo_path = null;
     payload.logo_url = null;
   }
 
   if (uploadedLogoPath) {
-    await deleteExistingLogo({ supabase, existingLogoPath });
+    await deleteExistingLogo({ supabase, organizationId, existingLogoPath });
     payload.logo_path = uploadedLogoPath;
     payload.logo_url = null;
   }
@@ -151,7 +203,10 @@ async function buildClientPayload({ formData, organizationId, supabase }) {
 }
 
 export async function createClientRecord(formData) {
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "create clients",
+  });
 
   const payload = await buildClientPayload({
     formData,
@@ -173,12 +228,22 @@ export async function updateClientRecord(formData) {
 
   if (!clientId) throw new Error("Missing client ID.");
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "update clients",
+  });
+
+  const existingLogoPath = await getExistingClientLogoPath({
+    supabase,
+    organizationId,
+    clientId,
+  });
 
   const payload = await buildClientPayload({
     formData,
     organizationId,
     supabase,
+    existingLogoPath,
   });
 
   const { error } = await supabase
@@ -198,7 +263,10 @@ export async function archiveSelectedClients(formData) {
   const clientIds = parseClientIds(formData.get("clientIds"));
   if (clientIds.length === 0) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "archive clients",
+  });
 
   const { error } = await supabase
     .from("clients")
@@ -215,7 +283,10 @@ export async function moveSelectedClientsToActive(formData) {
   const clientIds = parseClientIds(formData.get("clientIds"));
   if (clientIds.length === 0) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "restore clients",
+  });
 
   const { error } = await supabase
     .from("clients")
@@ -232,7 +303,10 @@ export async function deleteSelectedClients(formData) {
   const clientIds = parseClientIds(formData.get("clientIds"));
   if (clientIds.length === 0) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: ADMIN_ROLES,
+    action: "delete clients",
+  });
 
   const { error } = await supabase
     .from("clients")
@@ -249,7 +323,10 @@ export async function archiveSingleClient(formData) {
   const clientId = formData.get("clientId");
   if (!clientId) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "archive clients",
+  });
 
   const { error } = await supabase
     .from("clients")
@@ -266,7 +343,10 @@ export async function moveSingleClientToActive(formData) {
   const clientId = formData.get("clientId");
   if (!clientId) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "restore clients",
+  });
 
   const { error } = await supabase
     .from("clients")
@@ -283,7 +363,10 @@ export async function deleteSingleClient(formData) {
   const clientId = formData.get("clientId");
   if (!clientId) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: ADMIN_ROLES,
+    action: "delete clients",
+  });
 
   const { error } = await supabase
     .from("clients")

@@ -2,9 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../../../utils/supabase/server.js";
-import { getCurrentWorkspace } from "../../../lib/workspace.js";
+import {
+  ADMIN_ROLES,
+  WRITE_ROLES,
+  getCurrentWorkspace,
+  requireWorkspaceRole,
+} from "../../../lib/workspace.js";
 
-async function getWorkspaceContext() {
+async function getWorkspaceContext({
+  allowedRoles = WRITE_ROLES,
+  action = "manage leads",
+} = {}) {
   const supabase = await createClient();
 
   const {
@@ -21,8 +29,11 @@ async function getWorkspaceContext() {
     throw new Error("No active workspace found.");
   }
 
+  requireWorkspaceRole(workspace, allowedRoles, action);
+
   return {
     supabase,
+    workspace,
     organizationId: workspace.organization.id,
   };
 }
@@ -44,11 +55,7 @@ function cleanNumber(value) {
 function cleanDate(value) {
   const nextValue = cleanText(value);
 
-  if (!nextValue) {
-    return null;
-  }
-
-  return nextValue;
+  return nextValue || null;
 }
 
 function buildLeadPayload(formData, organizationId) {
@@ -63,30 +70,24 @@ function buildLeadPayload(formData, organizationId) {
 
   return {
     organization_id: organizationId,
-
-    // Legacy compatibility. Your existing leads table still has this column.
     name: businessName,
-
     business_name: businessName,
     contact_name: contactName || businessName,
     email: cleanText(formData.get("email")) || null,
     phone: cleanText(formData.get("phone")) || null,
     website: cleanText(formData.get("website")) || null,
     location: cleanText(formData.get("location")) || null,
-
     source: cleanText(formData.get("source")) || "Manual",
     form_source: cleanText(formData.get("formSource")) || "Manual Entry",
     form_name: cleanText(formData.get("formName")) || "Manual CRM Entry",
     form_id: cleanText(formData.get("formId")) || null,
     submission_id: cleanText(formData.get("submissionId")) || null,
-
     service_interest:
       cleanText(formData.get("serviceInterest")) || "General inquiry",
     stage,
     priority: cleanText(formData.get("priority")) || "medium",
     estimated_value: cleanNumber(formData.get("estimatedValue")),
     next_follow_up: cleanDate(formData.get("nextFollowUp")),
-
     notes: cleanText(formData.get("notes")) || null,
     status: stage === "archived" ? "archived" : "active",
     updated_at: new Date().toISOString(),
@@ -94,7 +95,10 @@ function buildLeadPayload(formData, organizationId) {
 }
 
 export async function createLead(formData) {
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "create leads",
+  });
 
   const payload = {
     ...buildLeadPayload(formData, organizationId),
@@ -108,6 +112,7 @@ export async function createLead(formData) {
   }
 
   revalidatePath("/crm");
+  revalidatePath("/");
 }
 
 export async function updateLead(formData) {
@@ -117,7 +122,10 @@ export async function updateLead(formData) {
     throw new Error("Missing lead ID.");
   }
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "update leads",
+  });
 
   const payload = buildLeadPayload(formData, organizationId);
 
@@ -132,6 +140,7 @@ export async function updateLead(formData) {
   }
 
   revalidatePath("/crm");
+  revalidatePath("/");
 }
 
 export async function moveLeadStage(formData) {
@@ -142,7 +151,10 @@ export async function moveLeadStage(formData) {
     return;
   }
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "move leads",
+  });
 
   const { error } = await supabase
     .from("leads")
@@ -159,7 +171,9 @@ export async function moveLeadStage(formData) {
   }
 
   revalidatePath("/crm");
+  revalidatePath("/");
 }
+
 export async function restoreLead(formData) {
   const leadId = formData.get("leadId");
 
@@ -167,7 +181,10 @@ export async function restoreLead(formData) {
     return;
   }
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "restore leads",
+  });
 
   const { error } = await supabase
     .from("leads")
@@ -184,6 +201,7 @@ export async function restoreLead(formData) {
   }
 
   revalidatePath("/crm");
+  revalidatePath("/");
 }
 
 export async function convertLeadToClient(formData) {
@@ -193,7 +211,10 @@ export async function convertLeadToClient(formData) {
     throw new Error("Missing lead ID.");
   }
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "convert leads",
+  });
 
   const { data: lead, error: leadError } = await supabase
     .from("leads")
@@ -205,6 +226,7 @@ export async function convertLeadToClient(formData) {
       email,
       phone,
       website,
+      location,
       notes,
       client_id
     `
@@ -238,6 +260,7 @@ export async function convertLeadToClient(formData) {
 
     revalidatePath("/crm");
     revalidatePath("/clients");
+    revalidatePath("/");
     return;
   }
 
@@ -267,6 +290,7 @@ export async function convertLeadToClient(formData) {
         email: cleanText(lead.email) || null,
         phone: cleanText(lead.phone) || null,
         website: cleanText(lead.website) || null,
+        location: cleanText(lead.location) || null,
         status: "active",
         notes:
           cleanText(lead.notes) ||
@@ -299,6 +323,7 @@ export async function convertLeadToClient(formData) {
 
   revalidatePath("/crm");
   revalidatePath("/clients");
+  revalidatePath("/");
 }
 
 export async function deleteLead(formData) {
@@ -308,7 +333,10 @@ export async function deleteLead(formData) {
     return;
   }
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: ADMIN_ROLES,
+    action: "delete leads",
+  });
 
   const { error } = await supabase
     .from("leads")
@@ -324,4 +352,5 @@ export async function deleteLead(formData) {
   }
 
   revalidatePath("/crm");
+  revalidatePath("/");
 }

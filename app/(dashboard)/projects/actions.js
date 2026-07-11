@@ -3,23 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../utils/supabase/server.js";
-import { getCurrentWorkspace } from "../../../lib/workspace.js";
+import {
+  ADMIN_ROLES,
+  WRITE_ROLES,
+  getCurrentWorkspace,
+  requireWorkspaceRole,
+} from "../../../lib/workspace.js";
 
 function getIdsFromFormData(formData) {
   const rawProjectIds = formData.get("projectIds");
 
-  if (!rawProjectIds) {
-    return [];
-  }
+  if (!rawProjectIds) return [];
 
   try {
     const parsedIds = JSON.parse(rawProjectIds);
-
-    if (!Array.isArray(parsedIds)) {
-      return [];
-    }
-
-    return parsedIds.filter(Boolean);
+    return Array.isArray(parsedIds) ? parsedIds.filter(Boolean) : [];
   } catch {
     return [];
   }
@@ -28,14 +26,15 @@ function getIdsFromFormData(formData) {
 function getSingleIdFromFormData(formData) {
   const projectId = formData.get("projectId");
 
-  if (!projectId) {
-    return [];
-  }
+  if (!projectId) return [];
 
   return [projectId];
 }
 
-async function getWorkspaceContext() {
+async function getWorkspaceContext({
+  allowedRoles = WRITE_ROLES,
+  action = "manage projects",
+} = {}) {
   const supabase = await createClient();
 
   const {
@@ -52,18 +51,22 @@ async function getWorkspaceContext() {
     redirect("/login");
   }
 
+  requireWorkspaceRole(workspace, allowedRoles, action);
+
   return {
     supabase,
+    workspace,
     organizationId: workspace.organization.id,
   };
 }
 
-async function updateProjects(projectIds, updates) {
-  if (projectIds.length === 0) {
-    return;
-  }
+async function updateProjects(projectIds, updates, options = {}) {
+  if (projectIds.length === 0) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: options.allowedRoles || WRITE_ROLES,
+    action: options.action || "update projects",
+  });
 
   const { error } = await supabase
     .from("projects")
@@ -72,7 +75,7 @@ async function updateProjects(projectIds, updates) {
     .in("id", projectIds);
 
   if (error) {
-    console.error("Project update error:", error.message);
+    throw new Error(error.message);
   }
 
   revalidatePath("/projects");
@@ -80,11 +83,12 @@ async function updateProjects(projectIds, updates) {
 }
 
 async function deleteProjects(projectIds) {
-  if (projectIds.length === 0) {
-    return;
-  }
+  if (projectIds.length === 0) return;
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: ADMIN_ROLES,
+    action: "delete projects",
+  });
 
   const { error } = await supabase
     .from("projects")
@@ -93,7 +97,7 @@ async function deleteProjects(projectIds) {
     .in("id", projectIds);
 
   if (error) {
-    console.error("Project delete error:", error.message);
+    throw new Error(error.message);
   }
 
   revalidatePath("/projects");
@@ -107,11 +111,7 @@ function cleanText(value) {
 function cleanDate(value) {
   const nextValue = cleanText(value);
 
-  if (!nextValue) {
-    return null;
-  }
-
-  return nextValue;
+  return nextValue || null;
 }
 
 function getProgressFromStatus(status) {
@@ -125,6 +125,33 @@ function getProgressFromStatus(status) {
   };
 
   return progressByStatus[status] ?? 40;
+}
+
+async function validateExistingClientId({
+  supabase,
+  organizationId,
+  existingClientId,
+}) {
+  if (!existingClientId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("id", existingClientId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.id) {
+    throw new Error("Selected client was not found in this workspace.");
+  }
+
+  return data.id;
 }
 
 async function resolveProjectClientId({
@@ -168,7 +195,11 @@ async function resolveProjectClientId({
     return newClient.id;
   }
 
-  return existingClientId || null;
+  return validateExistingClientId({
+    supabase,
+    organizationId,
+    existingClientId,
+  });
 }
 
 function buildProjectPayload(formData, clientId) {
@@ -198,7 +229,10 @@ function buildProjectPayload(formData, clientId) {
 }
 
 export async function createProject(formData) {
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "create projects",
+  });
 
   const existingClientId = cleanText(formData.get("clientId"));
   const newClientName = cleanText(formData.get("newClientName"));
@@ -212,30 +246,14 @@ export async function createProject(formData) {
 
   const payload = buildProjectPayload(formData, clientId);
 
-  const { data: createdProject, error } = await supabase
-  .from("projects")
-  .insert({
+  const { error } = await supabase.from("projects").insert({
     organization_id: organizationId,
     ...payload,
-  })
-  .select("id, client_id")
-  .single();
+  });
 
-if (error) {
-  throw new Error(error.message);
-}
-
-if (clientId && createdProject?.id && createdProject.client_id !== clientId) {
-  const { error: relinkError } = await supabase
-    .from("projects")
-    .update({ client_id: clientId })
-    .eq("organization_id", organizationId)
-    .eq("id", createdProject.id);
-
-  if (relinkError) {
-    throw new Error(relinkError.message);
+  if (error) {
+    throw new Error(error.message);
   }
-}
 
   revalidatePath("/");
   revalidatePath("/projects");
@@ -249,7 +267,10 @@ export async function updateProject(formData) {
     throw new Error("Missing project ID.");
   }
 
-  const { supabase, organizationId } = await getWorkspaceContext();
+  const { supabase, organizationId } = await getWorkspaceContext({
+    allowedRoles: WRITE_ROLES,
+    action: "update projects",
+  });
 
   const existingClientId = cleanText(formData.get("clientId"));
   const newClientName = cleanText(formData.get("newClientName"));
@@ -281,33 +302,45 @@ export async function updateProject(formData) {
 export async function completeSelectedProjects(formData) {
   const projectIds = getIdsFromFormData(formData);
 
-  await updateProjects(projectIds, {
-    status: "completed",
-    progress: 100,
-    completed_at: new Date().toISOString(),
-    archived_at: null,
-  });
+  await updateProjects(
+    projectIds,
+    {
+      status: "completed",
+      progress: 100,
+      completed_at: new Date().toISOString(),
+      archived_at: null,
+    },
+    { action: "complete projects" }
+  );
 }
 
 export async function moveSelectedProjectsToActive(formData) {
   const projectIds = getIdsFromFormData(formData);
 
-  await updateProjects(projectIds, {
-    status: "in_progress",
-    progress: 40,
-    completed_at: null,
-    archived_at: null,
-  });
+  await updateProjects(
+    projectIds,
+    {
+      status: "in_progress",
+      progress: 40,
+      completed_at: null,
+      archived_at: null,
+    },
+    { action: "restore projects" }
+  );
 }
 
 export async function archiveSelectedProjects(formData) {
   const projectIds = getIdsFromFormData(formData);
 
-  await updateProjects(projectIds, {
-    status: "archived",
-    progress: 0,
-    archived_at: new Date().toISOString(),
-  });
+  await updateProjects(
+    projectIds,
+    {
+      status: "archived",
+      progress: 0,
+      archived_at: new Date().toISOString(),
+    },
+    { action: "archive projects" }
+  );
 }
 
 export async function deleteSelectedProjects(formData) {
@@ -320,48 +353,62 @@ export async function toggleSingleProjectCompletion(formData) {
   const projectId = formData.get("projectId");
   const currentStatus = formData.get("currentStatus");
 
-  if (!projectId) {
-    return;
-  }
+  if (!projectId) return;
 
   if (currentStatus === "completed") {
-    await updateProjects([projectId], {
-      status: "in_progress",
-      progress: 40,
-      completed_at: null,
-      archived_at: null,
-    });
+    await updateProjects(
+      [projectId],
+      {
+        status: "in_progress",
+        progress: 40,
+        completed_at: null,
+        archived_at: null,
+      },
+      { action: "restore projects" }
+    );
 
     return;
   }
 
-  await updateProjects([projectId], {
-    status: "completed",
-    progress: 100,
-    completed_at: new Date().toISOString(),
-    archived_at: null,
-  });
+  await updateProjects(
+    [projectId],
+    {
+      status: "completed",
+      progress: 100,
+      completed_at: new Date().toISOString(),
+      archived_at: null,
+    },
+    { action: "complete projects" }
+  );
 }
 
 export async function moveSingleProjectToActive(formData) {
   const projectIds = getSingleIdFromFormData(formData);
 
-  await updateProjects(projectIds, {
-    status: "in_progress",
-    progress: 40,
-    completed_at: null,
-    archived_at: null,
-  });
+  await updateProjects(
+    projectIds,
+    {
+      status: "in_progress",
+      progress: 40,
+      completed_at: null,
+      archived_at: null,
+    },
+    { action: "restore projects" }
+  );
 }
 
 export async function archiveSingleProject(formData) {
   const projectIds = getSingleIdFromFormData(formData);
 
-  await updateProjects(projectIds, {
-    status: "archived",
-    progress: 0,
-    archived_at: new Date().toISOString(),
-  });
+  await updateProjects(
+    projectIds,
+    {
+      status: "archived",
+      progress: 0,
+      archived_at: new Date().toISOString(),
+    },
+    { action: "archive projects" }
+  );
 }
 
 export async function deleteSingleProject(formData) {
