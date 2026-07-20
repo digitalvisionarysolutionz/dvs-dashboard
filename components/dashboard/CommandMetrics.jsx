@@ -8,7 +8,7 @@ export default function CommandMetrics({ metrics = [], primaryMetric }) {
   }
 
   return (
-    <section className="grid grid-cols-5 gap-2.5">
+    <section className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5">
       {metricList.slice(0, 5).map((metric) => (
         <CommandMetricCard
           key={metric.id || metric.label}

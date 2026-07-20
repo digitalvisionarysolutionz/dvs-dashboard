@@ -64,7 +64,11 @@ export default function Sidebar({ brand }) {
   return (
     <aside className="dvs-sidebar-bg hidden h-screen w-[258px] shrink-0 overflow-hidden border-r border-[#5cf4ec]/15 px-3.5 py-3.5 text-white lg:block">
       <div className="relative z-10 flex h-full min-h-0 flex-col">
-        <div className="mb-4 flex shrink-0 items-center gap-2.5 px-1">
+        <Link
+          href="/"
+          aria-label="Go to dashboard"
+          className="mb-4 flex shrink-0 items-center gap-2.5 rounded-[var(--radius-lg)] px-1 py-1 transition hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407]"
+        >
           {brand.logo?.src ? (
             <div className="flex h-11 w-11 items-center justify-center">
               <Image
@@ -92,7 +96,7 @@ export default function Sidebar({ brand }) {
               </p>
             </div>
           )}
-        </div>
+        </Link>
 
         <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
           <NavMenu />
