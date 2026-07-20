@@ -77,9 +77,32 @@ function ClientLogo({ client }) {
   );
 }
 
-function ClientLogoPreview({ client, size = "md" }) {
-  const sizeClass = size === "lg" ? "h-20 w-20" : "h-14 w-14";
+function ClientPortfolioLogo({ client }) {
+  if (client.logoUrl) {
+    return (
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-lg)] border border-[#5cf4ec]/25 bg-white/[0.035] shadow-[0_0_24px_rgba(92,244,236,0.12)]">
+        <img
+          src={client.logoUrl}
+          alt=""
+          className="h-full w-full object-contain"
+          loading="lazy"
+          draggable="false"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      </div>
+    );
+  }
 
+  return (
+    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radius-lg)] border border-[#5cf4ec]/25 bg-[#5cf4ec]/10 text-lg font-black text-[#5cf4ec] shadow-[0_0_24px_rgba(92,244,236,0.12)]">
+      {client.initials}
+    </div>
+  );
+}
+
+function ClientLogoPreview({ client }) {
   return (
     <div className="flex items-center gap-3">
       <ClientLogo client={client} />
@@ -93,6 +116,584 @@ function ClientLogoPreview({ client, size = "md" }) {
         </p>
       </div>
     </div>
+  );
+}
+
+const portfolioTabs = [
+  { key: "overview", label: "Overview" },
+  { key: "business", label: "Business" },
+  { key: "needs", label: "Needs" },
+  { key: "projects", label: "Projects" },
+  { key: "intake", label: "Intake" },
+  { key: "notes", label: "Notes" },
+  { key: "activity", label: "Activity" },
+];
+
+const placeholderNeeds = [
+  "Web Development",
+  "Website Redesign",
+  "Lead Generation",
+  "Custom System / Dashboard",
+  "Client Portal",
+  "Booking or Intake System",
+  "Quote Request System",
+  "Automation / Lead Flow",
+  "Booking or Payment System",
+  "SEO/AEO / GBP",
+  "Photo / Video",
+  "Content Launch Pack",
+  "Tech Support",
+  "App or Software Idea",
+  "Not Sure Yet",
+];
+
+const placeholderGoals = [
+  "Look more professional",
+  "Get more leads",
+  "Book more appointments",
+  "Improve Google visibility",
+  "Organize customer info",
+  "Automate follow-up",
+  "Launch a new offer",
+  "Fix outdated web presence",
+  "Create better visuals",
+  "Build a custom system",
+];
+
+const placeholderProblems = [
+  "Not getting enough leads",
+  "Website looks outdated",
+  "Customers are confused",
+  "No clear booking process",
+  "Leads are getting lost",
+  "Too much manual follow-up",
+  "No organized dashboard",
+  "No good photos/content",
+  "Poor Google visibility",
+  "Need a better system behind the business",
+];
+
+const placeholderAssets = [
+  "Logo",
+  "Brand colors",
+  "Photos",
+  "Videos",
+  "Written content",
+  "Domain",
+  "Website login",
+  "Hosting login",
+  "Google Business Profile access",
+  "Social media access",
+  "Email platform",
+  "CRM/spreadsheet",
+  "None yet",
+];
+
+function PortfolioTabs({ activeTab, onTabChange }) {
+  return (
+    <div className="border-b border-[var(--app-border)]">
+      <div
+        role="tablist"
+        aria-label="Client portfolio sections"
+        className="flex gap-6 overflow-x-auto"
+      >
+        {portfolioTabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onTabChange(tab.key)}
+              className={`relative min-h-11 shrink-0 touch-manipulation pb-3 text-sm font-black tracking-normal transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407] ${
+                isActive
+                  ? "text-[#5cf4ec]"
+                  : "text-slate-500 hover:text-slate-200"
+              }`}
+            >
+              {tab.label}
+
+              {isActive && (
+                <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[#5cf4ec] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PortfolioCard({ eyebrow, title, children, className = "" }) {
+  return (
+    <div
+      className={`rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4 ${className}`}
+    >
+      {eyebrow && (
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+          {eyebrow}
+        </p>
+      )}
+
+      {title && <h3 className="mt-1 text-base font-black text-white">{title}</h3>}
+
+      <div className={eyebrow || title ? "mt-3" : ""}>{children}</div>
+    </div>
+  );
+}
+
+function PortfolioField({ label, value, fallback = "Not added yet." }) {
+  const displayValue = value || fallback;
+
+  return (
+    <div className="min-w-0 rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-3">
+      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-sm font-black leading-5 text-white">
+        {displayValue}
+      </p>
+    </div>
+  );
+}
+
+function PlaceholderPanel({ title, description, items = [] }) {
+  return (
+    <div className="rounded-[var(--radius-md)] border border-dashed border-white/10 bg-[#050b12] p-4">
+      <p className="text-sm font-black text-white">{title}</p>
+
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-400">
+        {description}
+      </p>
+
+      {items.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {items.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectProgressBar({ progress }) {
+  const safeProgress = Math.min(Math.max(Number(progress) || 0, 0), 100);
+
+  return (
+    <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-white/[0.09]">
+      <div
+        className="h-full rounded-full bg-[#5cf4ec] shadow-[0_0_12px_rgba(92,244,236,0.55)]"
+        style={{ width: `${safeProgress}%` }}
+      />
+    </div>
+  );
+}
+
+function ProjectCard({ project }) {
+  const safeProgress = Math.min(Math.max(Number(project.progress) || 0, 0), 100);
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-white">{project.name}</p>
+
+          <p className="mt-1 text-xs font-semibold text-slate-400">
+            {project.status} · {project.dueDate}
+          </p>
+
+          {project.priority && (
+            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+              {project.priority} Priority
+            </p>
+          )}
+        </div>
+
+        <span className="shrink-0 text-xs font-black text-slate-300">
+          {safeProgress}%
+        </span>
+      </div>
+
+      <ProjectProgressBar progress={safeProgress} />
+    </div>
+  );
+}
+
+function ClientProjectsPanel({ client, onCreateProject }) {
+  const projects = client?.linkedProjects || [];
+  const summary = client?.projectSummary || {
+    total: projects.length,
+    active: projects.filter(
+      (project) => !["completed", "archived"].includes(project.rawStatus)
+    ).length,
+    completed: projects.filter((project) => project.rawStatus === "completed")
+      .length,
+    urgentProject: projects[0] || null,
+  };
+
+  return (
+    <PortfolioCard eyebrow="Linked Projects">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-lg font-black text-white">
+            {summary.total} project{summary.total === 1 ? "" : "s"}
+          </p>
+
+          <p className="mt-1 text-sm font-semibold text-slate-400">
+            {summary.active} active · {summary.completed} completed
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onCreateProject(client);
+          }}
+          className="inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center rounded-[var(--radius-md)] border border-white/10 bg-[#071018] px-4 py-2 text-sm font-black text-white transition hover:border-[#5cf4ec]/35 hover:bg-[#0b1722] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407]"
+        >
+          Create Project
+        </button>
+      </div>
+
+      {summary.urgentProject && (
+        <div className="mb-3 rounded-[var(--radius-md)] border border-[#5cf4ec]/20 bg-[#5cf4ec]/[0.055] p-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#5cf4ec]">
+            Priority Snapshot
+          </p>
+
+          <p className="mt-1 truncate text-sm font-black text-white">
+            {summary.urgentProject.name}
+          </p>
+
+          <p className="mt-1 text-xs font-semibold text-slate-400">
+            {summary.urgentProject.status} · {summary.urgentProject.dueDate}
+          </p>
+        </div>
+      )}
+
+      {projects.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-white/10 bg-[#050b12] p-4">
+          <p className="text-sm font-semibold leading-6 text-slate-400">
+            No linked projects yet. Use the Create Project button above to start
+            the first project for this client.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-2 xl:grid-cols-2">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      )}
+    </PortfolioCard>
+  );
+}
+
+function OverviewTab({ client }) {
+  const summary = client.projectSummary || {
+    total: 0,
+    active: 0,
+    completed: 0,
+    urgentProject: null,
+  };
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-3">
+          <PortfolioField label="Status" value={client.status} />
+          <PortfolioField label="Email" value={client.email} />
+          <PortfolioField label="Phone" value={client.phone} />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <PortfolioField label="Location" value={client.location} />
+
+          <PortfolioCard eyebrow="Website">
+            {client.website ? (
+              <a
+                href={client.website}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-9 touch-manipulation items-center rounded-[var(--radius-md)] border border-[#5cf4ec]/30 bg-[#5cf4ec]/10 px-3 text-xs font-black uppercase tracking-[0.18em] text-[#5cf4ec] transition hover:bg-[#5cf4ec]/15 hover:text-white"
+              >
+                Visit Website
+              </a>
+            ) : (
+              <p className="text-sm font-semibold leading-6 text-slate-400">
+                No website added.
+              </p>
+            )}
+          </PortfolioCard>
+        </div>
+      </div>
+
+      <PortfolioCard eyebrow="Portfolio Snapshot">
+        <div className="grid gap-2">
+          <PortfolioField label="Active Projects" value={String(summary.active)} />
+          <PortfolioField
+            label="Completed Projects"
+            value={String(summary.completed)}
+          />
+          <PortfolioField
+            label="Priority Project"
+            value={summary.urgentProject?.name || ""}
+          />
+        </div>
+      </PortfolioCard>
+    </div>
+  );
+}
+
+function BusinessTab({ client }) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <PortfolioCard eyebrow="Business Snapshot">
+        <div className="grid gap-3">
+          <PortfolioField label="Business Name" value={client.businessName} />
+          <PortfolioField label="Contact Name" value={client.name} />
+          <PortfolioField label="Service Area" value={client.location} />
+          <PortfolioField label="Current Website" value={client.website} />
+        </div>
+      </PortfolioCard>
+
+      <PortfolioCard eyebrow="Future Intake Fields">
+        <PlaceholderPanel
+          title="Business context will come from intake."
+          description="These fields are not stored on the client record yet. They should be collected through Intake or New Project brief records so the client portfolio stays clean."
+          items={[
+            "What does the business do?",
+            "Who do they serve?",
+            "Google Business Profile",
+            "Social links",
+            "Preferred contact",
+            "Best time to reach",
+          ]}
+        />
+      </PortfolioCard>
+    </div>
+  );
+}
+
+function NeedsTab() {
+  return (
+    <div className="space-y-3">
+      <PlaceholderPanel
+        title="Needs and goals will be connected through Intake and Project Briefs."
+        description="Most of these fields should live on the intake submission or new project record, then surface here inside the Client Portfolio."
+      />
+
+      <PortfolioCard eyebrow="Potential Services">
+        <div className="flex flex-wrap gap-2">
+          {placeholderNeeds.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </PortfolioCard>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <PortfolioCard eyebrow="Goals">
+          <div className="flex flex-wrap gap-2">
+            {placeholderGoals.map((item) => (
+              <span
+                key={item}
+                className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </PortfolioCard>
+
+        <PortfolioCard eyebrow="Current Problems">
+          <div className="flex flex-wrap gap-2">
+            {placeholderProblems.map((item) => (
+              <span
+                key={item}
+                className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </PortfolioCard>
+      </div>
+    </div>
+  );
+}
+
+function IntakeTab() {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <PortfolioCard eyebrow="Latest Intake">
+        <PlaceholderPanel
+          title="No intake submission linked yet."
+          description="Later, the private client intake form should save into Supabase, link to this client, and show the full submission here."
+          items={[
+            "Budget range",
+            "Timeline",
+            "Project details",
+            "Photo session",
+            "Vision",
+          ]}
+        />
+      </PortfolioCard>
+
+      <PortfolioCard eyebrow="Assets + Access">
+        <PlaceholderPanel
+          title="Assets checklist will live on intake or project briefs."
+          description="This should not become random text on the client profile. It should be structured and connected to the specific project."
+          items={placeholderAssets}
+        />
+      </PortfolioCard>
+    </div>
+  );
+}
+
+function NotesTab({ client }) {
+  return (
+    <PortfolioCard eyebrow="Internal Notes">
+      <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+        {client.notes}
+      </p>
+    </PortfolioCard>
+  );
+}
+
+function ActivityTab() {
+  return (
+    <PortfolioCard eyebrow="Activity Timeline">
+      <PlaceholderPanel
+        title="Activity history is not connected yet."
+        description="Later this tab should show client-created, lead-converted, project-created, project-completed, intake-submitted, note-added, and file-upload events."
+        items={[
+          "Client created",
+          "Lead converted",
+          "Project created",
+          "Project completed",
+          "Intake submitted",
+          "Logo updated",
+        ]}
+      />
+    </PortfolioCard>
+  );
+}
+
+function ClientPortfolioContent({ client, activeTab, onCreateProject }) {
+  if (activeTab === "business") {
+    return <BusinessTab client={client} />;
+  }
+
+  if (activeTab === "needs") {
+    return <NeedsTab />;
+  }
+
+  if (activeTab === "projects") {
+    return (
+      <ClientProjectsPanel client={client} onCreateProject={onCreateProject} />
+    );
+  }
+
+  if (activeTab === "intake") {
+    return <IntakeTab />;
+  }
+
+  if (activeTab === "notes") {
+    return <NotesTab client={client} />;
+  }
+
+  if (activeTab === "activity") {
+    return <ActivityTab />;
+  }
+
+  return <OverviewTab client={client} />;
+}
+
+function ClientDetailsModal({ client, onClose, onOpenEdit, onCreateProject }) {
+  const [activePortfolioTab, setActivePortfolioTab] = useState("overview");
+
+  useEffect(() => {
+    if (client?.id) {
+      setActivePortfolioTab("overview");
+    }
+  }, [client?.id]);
+
+  if (!client) {
+    return null;
+  }
+
+  return (
+    <DashboardModal
+      open={Boolean(client)}
+      eyebrow="Client Portfolio"
+title="Client Portfolio"
+description="Master client record, projects, intake, notes, and activity."
+      maxWidth="max-w-6xl"
+      onClose={onClose}
+      closeLabel="Close client portfolio"
+      footer={
+        <>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={() => onOpenEdit(client)}
+          >
+            Edit Client
+          </CompactActionButton>
+
+          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+            Close
+          </CompactActionButton>
+        </>
+      }
+    >
+      <div className="space-y-4">
+  <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-white/[0.025] p-4">
+    <ClientPortfolioLogo client={client} />
+
+    <div className="min-w-0">
+      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#5cf4ec]">
+        Master Client Record
+      </p>
+
+      <h3 className="mt-1 truncate text-xl font-black text-white">
+        {client.businessName}
+      </h3>
+
+      <p className="mt-1 truncate text-sm font-semibold text-slate-400">
+        Contact: {client.name}
+      </p>
+    </div>
+  </div>
+
+  <PortfolioTabs
+    activeTab={activePortfolioTab}
+    onTabChange={setActivePortfolioTab}
+  />
+
+  <ClientPortfolioContent
+    client={client}
+    activeTab={activePortfolioTab}
+    onCreateProject={onCreateProject}
+  />
+</div>
+    </DashboardModal>
   );
 }
 
@@ -411,9 +1012,9 @@ function ClientRow({
 
         <p className="mt-1 text-[var(--app-text-muted)]">{client.phone}</p>
 
-        {(client.location || client.address) && (
+        {client.location && (
           <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--app-text-muted)]">
-            {client.location || client.address}
+            {client.location}
           </p>
         )}
       </div>
@@ -453,117 +1054,6 @@ function ClientDirectory({
         </div>
       )}
     </div>
-  );
-}
-
-function ClientDetailsModal({ client, onClose, onOpenEdit }) {
-  if (!client) {
-    return null;
-  }
-
-  return (
-    <DashboardModal
-      open={Boolean(client)}
-      eyebrow="Client Details"
-      title={client.businessName}
-      description={`Contact: ${client.name}`}
-      maxWidth="max-w-3xl"
-      onClose={onClose}
-      closeLabel="Close client details"
-      footer={
-        <>
-          <CompactActionButton
-            type="button"
-            variant="secondary"
-            onClick={() => onOpenEdit(client)}
-          >
-            Edit Client
-          </CompactActionButton>
-
-          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
-            Close
-          </CompactActionButton>
-        </>
-      }
-    >
-      <div className="space-y-3">
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3.5">
-          <ClientLogoPreview client={client} />
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-              Status
-            </p>
-            <div className="mt-2">
-              <StatusBadge>{client.status}</StatusBadge>
-            </div>
-          </div>
-
-          <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-              Email
-            </p>
-            <p className="mt-2 break-words text-sm font-black leading-5 text-white">
-              {client.email}
-            </p>
-          </div>
-
-          <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-              Phone
-            </p>
-            <p className="mt-2 break-words text-sm font-black leading-5 text-white">
-              {client.phone}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
-              Location
-            </p>
-
-            <p className="mt-3 whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
-              {client.location || "No location added."}
-            </p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
-              Website
-            </p>
-
-            {client.website ? (
-              <a
-                href={client.website}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex min-h-9 touch-manipulation items-center rounded-[var(--radius-md)] border border-[#5cf4ec]/30 bg-[#5cf4ec]/10 px-3 text-xs font-black uppercase tracking-[0.18em] text-[#5cf4ec] transition hover:bg-[#5cf4ec]/15 hover:text-white"
-              >
-                Visit Website
-              </a>
-            ) : (
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-400">
-                No website added.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
-            Notes
-          </p>
-
-          <p className="mt-3 whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
-            {client.notes}
-          </p>
-        </div>
-      </div>
-    </DashboardModal>
   );
 }
 
@@ -609,7 +1099,6 @@ function ClientFormModal({ open, client, onClose }) {
   id={formId}
   action={action}
   onSubmit={onClose}
-  encType="multipart/form-data"
   className="space-y-4"
 >
         {isEditing && <input type="hidden" name="clientId" value={client.id} />}
@@ -833,6 +1322,25 @@ useEffect(() => {
     setClientFormOpen(false);
   }
 
+  function handleCreateProjectForClient(client) {
+  if (!client?.id) {
+    return;
+  }
+
+  setDetailsClient(null);
+
+  window.setTimeout(() => {
+    window.dispatchEvent(
+      new CustomEvent("dvs-open-new-project", {
+        detail: {
+          clientId: client.id,
+          clientName: client.businessName,
+        },
+      })
+    );
+  }, 0);
+}
+
   return (
     <>
       <div className="rounded-[var(--radius-xl)] border border-[var(--app-border)] bg-gradient-to-br from-white/[0.045] via-white/[0.025] to-cyan-300/[0.025] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)]">
@@ -872,10 +1380,11 @@ useEffect(() => {
       </div>
 
       <ClientDetailsModal
-        client={detailsClient}
-        onClose={() => setDetailsClient(null)}
-        onOpenEdit={openEditClient}
-      />
+  client={detailsClient}
+  onClose={() => setDetailsClient(null)}
+  onOpenEdit={openEditClient}
+  onCreateProject={handleCreateProjectForClient}
+/>
 
       <ClientFormModal
         open={clientFormOpen}
