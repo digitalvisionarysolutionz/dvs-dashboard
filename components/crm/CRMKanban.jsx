@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import Button from "../ui/Button.jsx";
 import StatusBadge from "../ui/StatusBadge.jsx";
+import SmartMenu, { SmartMenuItem } from "../ui/SmartMenu.jsx";
 import { leadStages } from "../../lib/leadsData.js";
 import {
   convertLeadToClient,
@@ -337,79 +339,75 @@ function CRMFilters({
 }
 
 function LeadActions({ lead }) {
-  const [open, setOpen] = useState(false);
-
   const availableStages = leadStages.filter(
     (stage) => stage.key !== lead.rawStage
   );
 
+  const canConvertToClient = !lead.clientId && lead.rawStatus !== "archived";
+
   return (
-    <div className="relative">
-      <button
-        type="button"
-        aria-label={`More actions for ${lead.businessName}`}
-        onClick={() => setOpen((current) => !current)}
-        className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--app-border)] bg-[#071018] text-[var(--app-text-muted)] transition hover:border-[var(--app-border-strong)] hover:text-white"
-      >
-        <DotsIcon />
-      </button>
+    <SmartMenu
+      label={`More actions for ${lead.businessName}`}
+      button={<DotsIcon />}
+      width={210}
+      estimatedHeight={canConvertToClient ? 360 : 300}
+    >
+      {canConvertToClient && (
+        <>
+          <form action={convertLeadToClient}>
+            <input type="hidden" name="leadId" value={lead.id} />
 
-      {open && (
-        <div className="absolute right-0 z-40 mt-2 w-48 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
-          <p className="px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-text-soft)]">
-            Move Stage
-          </p>
-
-          {availableStages.map((stage) => (
-            <form key={stage.key} action={moveLeadStage}>
-              <input type="hidden" name="leadId" value={lead.id} />
-              <input type="hidden" name="stage" value={stage.key} />
-
-              <button
-                type="submit"
-                className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
-              >
-                {stage.label}
-              </button>
-            </form>
-          ))}
+            <SmartMenuItem type="submit" tone="success">
+              Convert to Client
+            </SmartMenuItem>
+          </form>
 
           <div className="my-2 border-t border-[var(--app-border)]" />
-
-          <form action={moveLeadStage}>
-            <input type="hidden" name="leadId" value={lead.id} />
-            <input type="hidden" name="stage" value="archived" />
-
-            <button
-              type="submit"
-              className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white"
-            >
-              Archive
-            </button>
-          </form>
-
-          <form action={deleteLead}>
-            <input type="hidden" name="leadId" value={lead.id} />
-
-            <button
-              type="submit"
-              onClick={(event) => {
-                if (
-                  !window.confirm(
-                    "Delete this lead permanently? This cannot be undone."
-                  )
-                ) {
-                  event.preventDefault();
-                }
-              }}
-              className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm font-bold text-red-200 hover:bg-red-400/10"
-            >
-              Delete
-            </button>
-          </form>
-        </div>
+        </>
       )}
-    </div>
+
+      <p className="px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-text-soft)]">
+        Move Stage
+      </p>
+
+      {availableStages.map((stage) => (
+        <form key={stage.key} action={moveLeadStage}>
+          <input type="hidden" name="leadId" value={lead.id} />
+          <input type="hidden" name="stage" value={stage.key} />
+
+          <SmartMenuItem type="submit">{stage.label}</SmartMenuItem>
+        </form>
+      ))}
+
+      <div className="my-2 border-t border-[var(--app-border)]" />
+
+      <form action={moveLeadStage}>
+        <input type="hidden" name="leadId" value={lead.id} />
+        <input type="hidden" name="stage" value="archived" />
+
+        <SmartMenuItem type="submit">Archive</SmartMenuItem>
+      </form>
+
+      <form action={deleteLead}>
+        <input type="hidden" name="leadId" value={lead.id} />
+
+        <SmartMenuItem
+          type="submit"
+          tone="danger"
+          onClick={(event) => {
+            if (
+              !window.confirm(
+                "Delete this lead permanently? This cannot be undone."
+              )
+            ) {
+              event.preventDefault();
+            }
+          }}
+        >
+          Delete
+        </SmartMenuItem>
+      </form>
+    </SmartMenu>
   );
 }
 
@@ -716,13 +714,13 @@ function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-  {lead.rawStage === "won" && !lead.clientId && (
-    <form action={convertLeadToClient}>
-  <input type="hidden" name="leadId" value={lead.id} />
+  {!lead.clientId && lead.rawStatus !== "archived" && (
+  <form action={convertLeadToClient}>
+    <input type="hidden" name="leadId" value={lead.id} />
 
-  <ConvertLeadButton />
-</form>
-  )}
+    <ConvertLeadButton />
+  </form>
+)}
 
   {lead.clientId && (
     <span className="rounded-[var(--radius-md)] border border-[var(--app-border-strong)] bg-[var(--app-accent-soft)] px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-accent)]">
