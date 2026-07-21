@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "../ui/Button.jsx";
 import CompactActionButton from "../ui/CompactActionButton.jsx";
 import DashboardModal from "../ui/DashboardModal.jsx";
@@ -19,6 +20,7 @@ import {
   toggleSingleProjectCompletion,
   updateProject,
 } from "../../app/(dashboard)/projects/actions.js";
+import ProjectBriefFields from "./ProjectBriefFields.jsx";
 
 function SearchIcon() {
   return (
@@ -782,12 +784,395 @@ function ProjectTable({
   );
 }
 
+const projectDetailTabs = [
+  { key: "overview", label: "Overview" },
+  { key: "brief", label: "Brief" },
+  { key: "needs", label: "Needs" },
+  { key: "assets", label: "Assets" },
+  { key: "photo", label: "Photo / Video" },
+  { key: "notes", label: "Notes" },
+  { key: "activity", label: "Activity" },
+];
+
+function hasBriefData(brief = {}) {
+  return Boolean(
+    brief.businessDescription ||
+      brief.targetAudience ||
+      brief.serviceArea ||
+      brief.currentWebsite ||
+      brief.googleBusinessProfileUrl ||
+      brief.socialLinks ||
+      brief.successDefinition ||
+      brief.budgetRange ||
+      brief.timeline ||
+      brief.projectDetails ||
+      brief.needsPhotoSession ||
+      brief.photoSessionType ||
+      brief.otherContentType ||
+      brief.vision ||
+      brief.internalNotes ||
+      brief.privateNotes ||
+      brief.selectedServices?.length ||
+      brief.goals?.length ||
+      brief.currentProblems?.length ||
+      brief.assetsAvailable?.length ||
+      brief.contentTypes?.length
+  );
+}
+
+function ProjectDetailTabs({ activeTab, onTabChange }) {
+  return (
+    <div className="border-b border-[var(--app-border)]">
+      <div
+        role="tablist"
+        aria-label="Project detail sections"
+        className="flex gap-6 overflow-x-auto"
+      >
+        {projectDetailTabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onTabChange(tab.key)}
+              className={`relative min-h-11 shrink-0 touch-manipulation pb-3 text-sm font-black tracking-normal transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407] ${
+                isActive
+                  ? "text-[#5cf4ec]"
+                  : "text-slate-500 hover:text-slate-200"
+              }`}
+            >
+              {tab.label}
+
+              {isActive && (
+                <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[#5cf4ec] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DetailCard({ eyebrow, children, className = "" }) {
+  return (
+    <div
+      className={`rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] p-4 ${className}`}
+    >
+      {eyebrow && (
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+          {eyebrow}
+        </p>
+      )}
+
+      <div className={eyebrow ? "mt-3" : ""}>{children}</div>
+    </div>
+  );
+}
+
+function DetailField({ label, value, fallback = "Not added yet." }) {
+  return (
+    <div className="min-w-0 rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-3">
+      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 whitespace-pre-line break-words text-sm font-black leading-5 text-white">
+        {value || fallback}
+      </p>
+    </div>
+  );
+}
+
+function TagList({ items = [], emptyText = "Nothing selected yet." }) {
+  if (!items?.length) {
+    return (
+      <p className="text-sm font-semibold leading-6 text-slate-400">
+        {emptyText}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <span
+          key={item}
+          className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-300"
+        >
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function EmptyBriefState({ message = "No project brief data added yet." }) {
+  return (
+    <div className="rounded-[var(--radius-md)] border border-dashed border-white/10 bg-[#050b12] p-4">
+      <p className="text-sm font-semibold leading-6 text-slate-400">
+        {message}
+      </p>
+    </div>
+  );
+}
+
+function ProjectOverviewTab({ project }) {
+  const displayProgress = getDisplayProgress(project);
+
+  return (
+    <div className="space-y-3.5">
+      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+        <DetailCard>
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+            Status
+          </p>
+
+          <div className="mt-2">
+            <StatusBadge>{project.status}</StatusBadge>
+          </div>
+        </DetailCard>
+
+        <DetailField label="Priority" value={project.priority} />
+        <DetailField label="Due" value={project.dueDate} />
+
+        <DetailCard>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+              Progress
+            </p>
+
+            <p className="text-sm font-black text-white">{displayProgress}%</p>
+          </div>
+
+          <ProgressBar value={displayProgress} size="compact" />
+        </DetailCard>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailField label="Client" value={project.clientName} />
+        <DetailField label="Project" value={project.name} />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailCard eyebrow="Description">
+          <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+            {project.description}
+          </p>
+        </DetailCard>
+
+        <DetailCard eyebrow="Project Notes">
+          <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+            {project.notes}
+          </p>
+        </DetailCard>
+      </div>
+    </div>
+  );
+}
+
+function ProjectBriefTab({ brief }) {
+  if (!hasBriefData(brief)) {
+    return <EmptyBriefState />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailField
+          label="Business Description"
+          value={brief.businessDescription}
+        />
+        <DetailField label="Target Audience" value={brief.targetAudience} />
+        <DetailField label="Service Area" value={brief.serviceArea} />
+        <DetailField label="Current Website" value={brief.currentWebsite} />
+        <DetailField
+          label="Google Business Profile"
+          value={brief.googleBusinessProfileUrl}
+        />
+        <DetailField label="Social Links" value={brief.socialLinks} />
+        <DetailField label="Budget Range" value={brief.budgetRange} />
+        <DetailField label="Timeline" value={brief.timeline} />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailCard eyebrow="Project Details / Problem">
+          <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+            {brief.projectDetails || "Not added yet."}
+          </p>
+        </DetailCard>
+
+        <DetailCard eyebrow="Success Definition">
+          <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+            {brief.successDefinition || "Not added yet."}
+          </p>
+        </DetailCard>
+      </div>
+    </div>
+  );
+}
+
+function ProjectNeedsTab({ brief }) {
+  if (!hasBriefData(brief)) {
+    return <EmptyBriefState message="No needs, goals, or current problems added yet." />;
+  }
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-3">
+      <DetailCard eyebrow="Selected Services">
+        <TagList items={brief.selectedServices} />
+      </DetailCard>
+
+      <DetailCard eyebrow="Goals">
+        <TagList items={brief.goals} />
+      </DetailCard>
+
+      <DetailCard eyebrow="Current Problems">
+        <TagList items={brief.currentProblems} />
+      </DetailCard>
+    </div>
+  );
+}
+
+function ProjectAssetsTab({ brief }) {
+  return (
+    <div className="space-y-3">
+      <DetailCard eyebrow="Assets Available">
+        <TagList items={brief.assetsAvailable} />
+      </DetailCard>
+
+      <div className="rounded-[var(--radius-md)] border border-amber-300/15 bg-amber-300/10 px-4 py-3">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">
+          Security Reminder
+        </p>
+
+        <p className="mt-2 text-sm font-semibold leading-6 text-amber-100/85">
+          This dashboard should only track whether access/assets exist. Do not
+          store passwords, 2FA codes, bank info, or private credentials here.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ProjectPhotoTab({ brief }) {
+  if (!hasBriefData(brief)) {
+    return <EmptyBriefState message="No photo or video planning details added yet." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailField
+          label="Needs Photo Session"
+          value={brief.needsPhotoSession}
+        />
+        <DetailField label="Session Type" value={brief.photoSessionType} />
+        <DetailField
+          label="Other Content Type"
+          value={brief.otherContentType}
+        />
+      </div>
+
+      <DetailCard eyebrow="Content Types">
+        <TagList items={brief.contentTypes} />
+      </DetailCard>
+
+      <DetailCard eyebrow="Vision">
+        <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+          {brief.vision || "Not added yet."}
+        </p>
+      </DetailCard>
+    </div>
+  );
+}
+
+function ProjectNotesTab({ project, brief }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <DetailCard eyebrow="Project Notes">
+        <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+          {project.notes}
+        </p>
+      </DetailCard>
+
+      <DetailCard eyebrow="Internal Brief Notes">
+        <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+          {brief.internalNotes || "No internal brief notes added yet."}
+        </p>
+      </DetailCard>
+
+      <div className="md:col-span-2">
+        <DetailCard eyebrow="Private Notes">
+          <div className="rounded-[var(--radius-md)] border border-red-300/15 bg-red-400/10 p-3">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-red-100">
+              Internal Only
+            </p>
+
+            <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-red-100/85">
+              {brief.privateNotes ||
+                "No private notes added yet. Private notes should never be exposed to a future client portal."}
+            </p>
+          </div>
+        </DetailCard>
+      </div>
+    </div>
+  );
+}
+
+function ProjectActivityTab() {
+  return (
+    <DetailCard eyebrow="Activity Timeline">
+      <EmptyBriefState message="Activity logs are not connected yet. Later this will show project-created, brief-updated, status-changed, completed, archived, and client-related events." />
+    </DetailCard>
+  );
+}
+
+function ProjectDetailsContent({ activeTab, project }) {
+  const brief = project.brief || {};
+
+  if (activeTab === "brief") {
+    return <ProjectBriefTab brief={brief} />;
+  }
+
+  if (activeTab === "needs") {
+    return <ProjectNeedsTab brief={brief} />;
+  }
+
+  if (activeTab === "assets") {
+    return <ProjectAssetsTab brief={brief} />;
+  }
+
+  if (activeTab === "photo") {
+    return <ProjectPhotoTab brief={brief} />;
+  }
+
+  if (activeTab === "notes") {
+    return <ProjectNotesTab project={project} brief={brief} />;
+  }
+
+  if (activeTab === "activity") {
+    return <ProjectActivityTab />;
+  }
+
+  return <ProjectOverviewTab project={project} />;
+}
+
 function DetailsModal({ project, onClose, onOpenEdit }) {
+  const [activeDetailTab, setActiveDetailTab] = useState("overview");
+
+  useEffect(() => {
+    if (project?.id) {
+      setActiveDetailTab("overview");
+    }
+  }, [project?.id]);
+
   if (!project) {
     return null;
   }
-
-  const displayProgress = getDisplayProgress(project);
 
   return (
     <DashboardModal
@@ -795,7 +1180,7 @@ function DetailsModal({ project, onClose, onOpenEdit }) {
       eyebrow="Project Details"
       title={getProjectTitle(project)}
       description={`Client: ${project.clientName}`}
-      maxWidth="max-w-3xl"
+      maxWidth="max-w-6xl"
       onClose={onClose}
       closeLabel="Close project details"
       footer={
@@ -814,72 +1199,13 @@ function DetailsModal({ project, onClose, onOpenEdit }) {
         </>
       }
     >
-      <div className="space-y-3.5">
-        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-              Status
-            </p>
+      <div className="space-y-4">
+        <ProjectDetailTabs
+          activeTab={activeDetailTab}
+          onTabChange={setActiveDetailTab}
+        />
 
-            <div className="mt-2">
-              <StatusBadge>{project.status}</StatusBadge>
-            </div>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-              Priority
-            </p>
-
-            <p className="mt-2 text-sm font-black text-white">
-              {project.priority}
-            </p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-              Due
-            </p>
-
-            <p className="mt-2 text-sm font-black text-white">
-              {project.dueDate}
-            </p>
-          </div>
-
-          <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.03] px-3 py-2.5">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                Progress
-              </p>
-
-              <p className="text-sm font-black text-white">{displayProgress}%</p>
-            </div>
-
-            <ProgressBar value={displayProgress} size="compact" />
-          </div>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="min-h-[150px] rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] px-4 py-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
-              Description
-            </p>
-
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">
-              {project.description}
-            </p>
-          </div>
-
-          <div className="min-h-[150px] rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] px-4 py-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
-              Internal Notes
-            </p>
-
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">
-              {project.notes}
-            </p>
-          </div>
-        </div>
+        <ProjectDetailsContent activeTab={activeDetailTab} project={project} />
       </div>
     </DashboardModal>
   );
@@ -1064,12 +1390,14 @@ function ProjectFormModal({ project, open, onClose }) {
             />
           </FormField>
         </div>
+        <ProjectBriefFields brief={project.brief || {}} />
       </form>
     </DashboardModal>
   );
 }
 
 export default function ProjectsList({ projects = [] }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("active");
   const [selectedIds, setSelectedIds] = useState([]);
   const [detailsProject, setDetailsProject] = useState(null);
@@ -1173,9 +1501,13 @@ export default function ProjectsList({ projects = [] }) {
   }
 
   function closeProjectForm() {
-    setEditingProject(null);
-    setProjectFormOpen(false);
-  }
+  setEditingProject(null);
+  setProjectFormOpen(false);
+
+  window.setTimeout(() => {
+    router.refresh();
+  }, 250);
+}
 
   return (
     <>
