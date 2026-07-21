@@ -79,6 +79,7 @@ async function updateProjects(projectIds, updates, options = {}) {
   }
 
   revalidatePath("/projects");
+  revalidatePath("/clients");
   revalidatePath("/");
 }
 
@@ -101,6 +102,7 @@ async function deleteProjects(projectIds) {
   }
 
   revalidatePath("/projects");
+  revalidatePath("/clients");
   revalidatePath("/");
 }
 
@@ -125,6 +127,59 @@ function getProgressFromStatus(status) {
   };
 
   return progressByStatus[status] ?? 40;
+}
+
+function getTextList(formData, fieldName) {
+  const values = formData
+    .getAll(fieldName)
+    .map((value) => cleanText(value))
+    .filter(Boolean);
+
+  if (values.length === 0) {
+    return [];
+  }
+
+  if (values.length === 1) {
+    const onlyValue = values[0];
+
+    try {
+      const parsedValue = JSON.parse(onlyValue);
+
+      if (Array.isArray(parsedValue)) {
+        return parsedValue.map((value) => cleanText(value)).filter(Boolean);
+      }
+    } catch {
+      return onlyValue
+        .split(",")
+        .map((value) => cleanText(value))
+        .filter(Boolean);
+    }
+  }
+
+  return values;
+}
+
+function hasBriefValue(payload) {
+  return Object.entries(payload).some(([key, value]) => {
+    if (
+      [
+        "organization_id",
+        "client_id",
+        "project_id",
+        "form_submission_id",
+        "created_at",
+        "updated_at",
+      ].includes(key)
+    ) {
+      return false;
+    }
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return Boolean(value);
+  });
 }
 
 async function validateExistingClientId({
@@ -228,6 +283,112 @@ function buildProjectPayload(formData, clientId) {
   };
 }
 
+function buildProjectBriefPayload({
+  formData,
+  organizationId,
+  clientId,
+  projectId,
+}) {
+  const payload = {
+    organization_id: organizationId,
+    client_id: clientId,
+    project_id: projectId,
+    form_submission_id: cleanText(formData.get("formSubmissionId")) || null,
+
+    business_description: cleanText(formData.get("businessDescription")) || null,
+    target_audience: cleanText(formData.get("targetAudience")) || null,
+    service_area: cleanText(formData.get("serviceArea")) || null,
+    current_website: cleanText(formData.get("currentWebsite")) || null,
+    google_business_profile_url:
+      cleanText(formData.get("googleBusinessProfileUrl")) || null,
+    social_links: cleanText(formData.get("socialLinks")) || null,
+
+    selected_services: getTextList(formData, "selectedServices"),
+    goals: getTextList(formData, "goals"),
+    success_definition: cleanText(formData.get("successDefinition")) || null,
+    current_problems: getTextList(formData, "currentProblems"),
+
+    budget_range: cleanText(formData.get("budgetRange")) || null,
+    timeline: cleanText(formData.get("timeline")) || null,
+
+    assets_available: getTextList(formData, "assetsAvailable"),
+    project_details: cleanText(formData.get("projectDetails")) || null,
+
+    needs_photo_session: cleanText(formData.get("needsPhotoSession")) || null,
+    photo_session_type: cleanText(formData.get("photoSessionType")) || null,
+    content_types: getTextList(formData, "contentTypes"),
+    other_content_type: cleanText(formData.get("otherContentType")) || null,
+    vision: cleanText(formData.get("vision")) || null,
+
+    internal_notes: cleanText(formData.get("internalNotes")) || null,
+    private_notes: cleanText(formData.get("privateNotes")) || null,
+
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!hasBriefValue(payload)) {
+    return null;
+  }
+
+  return payload;
+}
+
+async function upsertProjectBrief({
+  supabase,
+  organizationId,
+  clientId,
+  projectId,
+  formData,
+}) {
+  if (!projectId) {
+    return;
+  }
+
+  const payload = buildProjectBriefPayload({
+    formData,
+    organizationId,
+    clientId,
+    projectId,
+  });
+
+  if (!payload) {
+    return;
+  }
+
+  const { data: existingBrief, error: existingBriefError } = await supabase
+    .from("project_briefs")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (existingBriefError) {
+    throw new Error(existingBriefError.message);
+  }
+
+  if (existingBrief?.id) {
+    const { error: updateBriefError } = await supabase
+      .from("project_briefs")
+      .update(payload)
+      .eq("organization_id", organizationId)
+      .eq("id", existingBrief.id);
+
+    if (updateBriefError) {
+      throw new Error(updateBriefError.message);
+    }
+
+    return;
+  }
+
+  const { error: insertBriefError } = await supabase
+    .from("project_briefs")
+    .insert(payload);
+
+  if (insertBriefError) {
+    throw new Error(insertBriefError.message);
+  }
+}
+
 export async function createProject(formData) {
   const { supabase, organizationId } = await getWorkspaceContext({
     allowedRoles: WRITE_ROLES,
@@ -246,14 +407,26 @@ export async function createProject(formData) {
 
   const payload = buildProjectPayload(formData, clientId);
 
-  const { error } = await supabase.from("projects").insert({
-    organization_id: organizationId,
-    ...payload,
-  });
+  const { data: project, error } = await supabase
+    .from("projects")
+    .insert({
+      organization_id: organizationId,
+      ...payload,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw new Error(error.message);
   }
+
+  await upsertProjectBrief({
+    supabase,
+    organizationId,
+    clientId,
+    projectId: project.id,
+    formData,
+  });
 
   revalidatePath("/");
   revalidatePath("/projects");
@@ -293,6 +466,14 @@ export async function updateProject(formData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await upsertProjectBrief({
+    supabase,
+    organizationId,
+    clientId,
+    projectId,
+    formData,
+  });
 
   revalidatePath("/");
   revalidatePath("/projects");
