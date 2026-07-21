@@ -715,7 +715,7 @@ function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
 
           <div className="flex flex-wrap items-center justify-end gap-2">
   {!lead.clientId && lead.rawStatus !== "archived" && (
-  <form action={convertLeadToClient}>
+  <form action={convertLeadToClient} onSubmit={onClose}>
     <input type="hidden" name="leadId" value={lead.id} />
 
     <ConvertLeadButton />
@@ -1013,16 +1013,21 @@ function LeadFormModal({ defaultStage, lead, onClose }) {
             </FormField>
 
             <FormField label="Estimated Value">
-              <input
-                name="estimatedValue"
-                type="number"
-                min="0"
-                step="50"
-                defaultValue={lead?.estimatedValue || ""}
-                placeholder="Estimated project value"
-                className="dvs-form-input"
-              />
-            </FormField>
+  <div className="relative">
+    <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-black text-[#5cf4ec]">
+      $
+    </span>
+
+    <input
+      name="estimatedValue"
+      type="text"
+      inputMode="decimal"
+      defaultValue={lead?.estimatedValue || ""}
+      placeholder="Estimated project value"
+      className="dvs-form-input !pl-12"
+    />
+  </div>
+</FormField>
 
             <FormField label="Next Follow-Up">
               <input
