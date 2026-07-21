@@ -681,8 +681,163 @@ function ConvertLeadButton() {
   );
 }
 
+function isEmptyLeadValue(value) {
+  return (
+    !value ||
+    value === "No email" ||
+    value === "No phone" ||
+    value === "No location" ||
+    value === "No contact added" ||
+    value === "No follow-up" ||
+    value === "No notes added yet." ||
+    value === "No form name"
+  );
+}
+
+function displayValue(value, fallback = "Not added") {
+  return isEmptyLeadValue(value) ? fallback : value;
+}
+
+function formatLeadDateTime(value) {
+  if (!value) return "Not added";
+
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(value));
+  } catch {
+    return "Not added";
+  }
+}
+
+function getLeadArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function DetailTile({ label, value, accent = false }) {
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 text-sm font-black ${
+          accent ? "text-[#5cf4ec]" : "text-white"
+        }`}
+      >
+        {displayValue(value)}
+      </p>
+    </div>
+  );
+}
+
+function DetailPanel({ title, children, className = "" }) {
+  return (
+    <section
+      className={`rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-white/[0.035] p-4 ${className}`}
+    >
+      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#5cf4ec]">
+        {title}
+      </p>
+
+      {children}
+    </section>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="grid gap-1 border-b border-white/10 py-2 last:border-b-0 sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+
+      <p className="break-words text-sm font-semibold leading-6 text-slate-300">
+        {displayValue(value)}
+      </p>
+    </div>
+  );
+}
+
+function PillList({ items, emptyText = "Nothing selected." }) {
+  const nextItems = getLeadArray(items);
+
+  if (!nextItems.length) {
+    return (
+      <p className="text-sm font-semibold leading-6 text-slate-500">
+        {emptyText}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {nextItems.map((item) => (
+        <span
+          key={item}
+          className="rounded-[var(--radius-pill)] border border-[#5cf4ec]/20 bg-[#5cf4ec]/10 px-3 py-1.5 text-xs font-black text-slate-200"
+        >
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function QuickNotesGrid({ quickNotes = {} }) {
+  const hasQuickNotes = Object.values(quickNotes || {}).some(Boolean);
+
+  if (!hasQuickNotes) {
+    return (
+      <p className="text-sm font-semibold leading-6 text-slate-500">
+        No quick notes were saved with this lead.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <DetailRow
+        label="Recommended"
+        value={quickNotes.recommendedService}
+      />
+      <DetailRow label="Quoted $$" value={quickNotes.quotedAmount} />
+      <DetailRow label="Range" value={quickNotes.estimatedRange} />
+      <DetailRow label="Priority" value={quickNotes.followUpPriority} />
+      <DetailRow label="Next Step" value={quickNotes.nextStep} />
+
+      <div className="md:col-span-2">
+        <DetailRow label="Private Notes" value={quickNotes.internalNotes} />
+      </div>
+    </div>
+  );
+}
+
 function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
   if (!lead) return null;
+
+  const intake = lead.rawPayload || {};
+  const quickNotes = intake.quickNotes || {};
+
+  const isPrivateIntakeLead =
+    lead.source === "DVS Intake" ||
+    lead.formSource === "Private Intake" ||
+    lead.formName === "Private Client Intake" ||
+    Boolean(lead.formSubmissionId);
+
+  const selectedServices = intake.selectedServices || lead.serviceInterest;
+  const goals = intake.goals || [];
+  const problems = intake.currentProblems || [];
+  const assets = intake.assetsAvailable || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
@@ -693,109 +848,211 @@ function LeadDetailsModal({ lead, onClose, onOpenEdit }) {
         onClick={onClose}
       />
 
-      <section className="relative z-10 max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.75)]">
-        <div className="mb-5 flex flex-col gap-4 border-b border-[var(--app-border)] pb-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <LeadAvatar lead={lead} />
+      <section className="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--app-border-strong)] bg-[#071018] shadow-[0_30px_100px_rgba(0,0,0,0.75),0_0_34px_rgba(92,244,236,0.08)]">
+        <div className="shrink-0 border-b border-[var(--app-border)] px-5 py-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <LeadAvatar lead={lead} />
 
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--app-accent)]">
-                Lead Details
-              </p>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--app-accent)]">
+                    {isPrivateIntakeLead ? "Private Intake Lead" : "Lead Details"}
+                  </p>
 
-              <h2 className="mt-2 truncate text-2xl font-black text-white">
-                {lead.businessName}
-              </h2>
+                  {isPrivateIntakeLead && (
+                    <span className="rounded-[var(--radius-pill)] border border-[#5cf4ec]/25 bg-[#5cf4ec]/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-[#5cf4ec]">
+                      DVS Intake
+                    </span>
+                  )}
+                </div>
 
-              <p className="mt-1 text-sm text-slate-400">
-                Contact: {lead.contactName}
-              </p>
+                <h2 className="mt-2 truncate text-2xl font-black text-white">
+                  {lead.businessName}
+                </h2>
+
+                <p className="mt-1 text-sm font-semibold text-slate-400">
+                  Contact: {displayValue(lead.contactName)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
+              {!lead.clientId && lead.rawStatus !== "archived" && (
+                <form action={convertLeadToClient} onSubmit={onClose}>
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <ConvertLeadButton />
+                </form>
+              )}
+
+              {lead.clientId && (
+                <span className="rounded-[var(--radius-md)] border border-[var(--app-border-strong)] bg-[var(--app-accent-soft)] px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-accent)]">
+                  Client Linked
+                </span>
+              )}
+
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => onOpenEdit(lead)}
+              >
+                Edit
+              </Button>
+
+              <Button type="button" variant="ghost" onClick={onClose}>
+                ✕
+              </Button>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-  {!lead.clientId && lead.rawStatus !== "archived" && (
-  <form action={convertLeadToClient} onSubmit={onClose}>
-    <input type="hidden" name="leadId" value={lead.id} />
-
-    <ConvertLeadButton />
-  </form>
-)}
-
-  {lead.clientId && (
-    <span className="rounded-[var(--radius-md)] border border-[var(--app-border-strong)] bg-[var(--app-accent-soft)] px-3 py-2 text-xs font-black uppercase tracking-widest text-[var(--app-accent)]">
-      Client Linked
-    </span>
-  )}
-
-  <Button
-    type="button"
-    variant="secondary"
-    onClick={() => onOpenEdit(lead)}
-  >
-    Edit
-  </Button>
-
-  <Button type="button" variant="ghost" onClick={onClose}>
-    ✕
-  </Button>
-</div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <InfoTile label="Stage" value={lead.stage} />
-          <InfoTile label="Priority" value={lead.priority} />
-          <InfoTile label="Value" value={lead.estimatedValueLabel} />
-          <InfoTile label="Follow-Up" value={lead.nextFollowUpLabel} />
-        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="grid gap-4 md:grid-cols-4">
+            <DetailTile label="Stage" value={lead.stage} />
+            <DetailTile label="Priority" value={lead.priority} />
+            <DetailTile label="Value" value={lead.estimatedValueLabel} accent />
+            <DetailTile label="Follow-Up" value={lead.nextFollowUpLabel} />
+          </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <InfoBlock label="Contact">
-            <p>{lead.email}</p>
-            <p>{lead.phone}</p>
-            <p>{lead.location}</p>
-          </InfoBlock>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <DetailPanel title="Contact + Business">
+              <DetailRow label="Email" value={lead.email} />
+              <DetailRow label="Phone" value={lead.phone} />
+              <DetailRow label="Location" value={lead.location} />
+              <DetailRow label="Website" value={lead.website} />
+              <DetailRow label="Service" value={lead.serviceInterest} />
+            </DetailPanel>
 
-          <InfoBlock label="Source">
-            <p>Source: {lead.source}</p>
-            <p>Form Source: {lead.formSource}</p>
-            <p>Form Name: {lead.formName}</p>
-          </InfoBlock>
-        </div>
+            <DetailPanel title="Lead Source">
+              <DetailRow label="Source" value={lead.source} />
+              <DetailRow label="Form Source" value={lead.formSource} />
+              <DetailRow label="Form Name" value={lead.formName} />
+              <DetailRow label="Submission ID" value={lead.submissionId} />
+              <DetailRow
+                label="Created"
+                value={formatLeadDateTime(lead.createdAt)}
+              />
+            </DetailPanel>
+          </div>
 
-        <InfoBlock label="Service Interest" className="mt-5">
-          <p>{lead.serviceInterest}</p>
-        </InfoBlock>
+          <DetailPanel title="Intake Summary" className="mt-4">
+            {isPrivateIntakeLead ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <DetailRow
+                    label="Preferred Contact"
+                    value={intake.preferredContactMethod}
+                  />
+                  <DetailRow
+                    label="Best Time"
+                    value={intake.bestTimeToReach}
+                  />
+                  <DetailRow label="Budget" value={intake.budgetRange} />
+                  <DetailRow label="Timeline" value={intake.timeline} />
+                  <DetailRow
+                    label="Service Area"
+                    value={intake.serviceArea || lead.location}
+                  />
+                </div>
 
-        <InfoBlock label="Website" className="mt-5">
-          {lead.website ? (
-            <a
-              href={lead.website}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block text-sm font-black uppercase tracking-widest text-[var(--app-accent)] transition hover:text-white"
-            >
-              Visit Website
-            </a>
-          ) : (
-            <p>No website added.</p>
-          )}
-        </InfoBlock>
+                <div>
+                  <DetailRow
+                    label="Business"
+                    value={intake.businessDescription}
+                  />
+                  <DetailRow
+                    label="Audience"
+                    value={intake.targetAudience}
+                  />
+                  <DetailRow
+                    label="Project Details"
+                    value={intake.projectDetails}
+                  />
+                  <DetailRow
+                    label="Success"
+                    value={intake.successDefinition}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm font-semibold leading-6 text-slate-500">
+                This lead was created manually or from a source that does not
+                include a full private intake summary.
+              </p>
+            )}
+          </DetailPanel>
 
-        <InfoBlock label="Notes" className="mt-5">
-          <p>{lead.notes}</p>
-        </InfoBlock>
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <DetailPanel title="Selected Services">
+              <PillList items={selectedServices} />
+            </DetailPanel>
 
-        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.035] p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Form Payload
-          </p>
+            <DetailPanel title="Goals">
+              <PillList items={goals} />
+            </DetailPanel>
 
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            This lead can store source names, form IDs, submission IDs, and raw
-            form payload data. We will surface live form payloads here once the
-            forms are connected.
-          </p>
+            <DetailPanel title="Current Problems">
+              <PillList items={problems} />
+            </DetailPanel>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <DetailPanel title="Assets + Access">
+              <PillList items={assets} />
+
+              <p className="mt-4 rounded-[var(--radius-md)] border border-amber-300/15 bg-amber-300/10 px-3 py-2 text-[11px] font-bold leading-5 text-amber-100">
+                Checklist only. Passwords, 2FA codes, banking details, and
+                private access keys should not be stored here.
+              </p>
+            </DetailPanel>
+
+            <DetailPanel title="Photo / Video">
+              <DetailRow
+                label="Needs Session"
+                value={intake.needsPhotoSession}
+              />
+              <DetailRow
+                label="Session Type"
+                value={intake.photoSessionType}
+              />
+              <DetailRow
+                label="Content Type"
+                value={intake.photoContentType}
+              />
+              <DetailRow
+                label="Other Content"
+                value={intake.photoContentOther}
+              />
+              <DetailRow label="Vision" value={intake.photoVision} />
+            </DetailPanel>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <DetailPanel title="Quick Notes / Internal">
+              <QuickNotesGrid quickNotes={quickNotes} />
+            </DetailPanel>
+
+            <DetailPanel title="Next Step">
+              <DetailRow
+                label="Follow-Up Priority"
+                value={quickNotes.followUpPriority || lead.priority}
+              />
+              <DetailRow
+                label="Next Step"
+                value={quickNotes.nextStep || lead.nextFollowUpLabel}
+              />
+              <DetailRow
+                label="Recommended"
+                value={quickNotes.recommendedService || lead.serviceInterest}
+              />
+            </DetailPanel>
+          </div>
+
+          <DetailPanel title="Lead Notes" className="mt-4">
+            <pre className="whitespace-pre-wrap break-words text-sm font-semibold leading-6 text-slate-300">
+              {displayValue(lead.notes)}
+            </pre>
+          </DetailPanel>
         </div>
       </section>
     </div>
