@@ -15,10 +15,15 @@ export const metadata = {
   title: "DVS Tech Dashboard",
   description: "Business Command Center",
   icons: {
-    icon: "/DVSfavicon.png",
-    shortcut: "/DVSfavicon.png",
-    apple: "/DVSfavicon.png",
-  },
+  icon: [
+    {
+      url: "/dvs-dashboard-favicon-2026.png",
+      type: "image/png",
+    },
+  ],
+  shortcut: "/dvs-dashboard-favicon-2026.png",
+  apple: "/dvs-dashboard-favicon-2026.png",
+},
 };
 
 export default function RootLayout({ children }) {
