@@ -378,14 +378,16 @@ export async function createPrivateIntakeLead(formData) {
   const { data: submission, error: submissionError } = await supabase
     .from("form_submissions")
     .insert({
-      organization_id: organizationId,
-      created_by: user.id,
+  organization_id: organizationId,
+  created_by: user.id,
 
-      source: "private_intake",
-      form_name: "Private Client Intake",
-      form_id: "dvs-private-intake",
-      submission_id: submissionId,
-      status: "lead_created",
+  form_type: "private_intake",
+  source_page: "/intake",
+  source: "private_intake",
+  form_name: "Private Client Intake",
+  form_id: "dvs-private-intake",
+  submission_id: submissionId,
+  status: "lead_created",
 
       full_name: normalized.fullName,
       business_name: normalized.businessName,
