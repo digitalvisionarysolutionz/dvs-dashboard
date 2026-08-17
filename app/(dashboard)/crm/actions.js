@@ -378,16 +378,16 @@ export async function createPrivateIntakeLead(formData) {
   const { data: submission, error: submissionError } = await supabase
     .from("form_submissions")
     .insert({
-  organization_id: organizationId,
-  created_by: user.id,
+      organization_id: organizationId,
+      created_by: user.id,
 
-  form_type: "private_intake",
-  source_page: "/intake",
-  source: "private_intake",
-  form_name: "Private Client Intake",
-  form_id: "dvs-private-intake",
-  submission_id: submissionId,
-  status: "lead_created",
+      form_type: "private_intake",
+      source_page: "/intake",
+      source: "private_intake",
+      form_name: "Private Client Intake",
+      form_id: "dvs-private-intake",
+      submission_id: submissionId,
+      status: "lead_created",
 
       full_name: normalized.fullName,
       business_name: normalized.businessName,
@@ -666,19 +666,36 @@ export async function convertLeadToClient(formData) {
     throw new Error(updateLeadError.message);
   }
 
+  const convertedAt = new Date().toISOString();
+
   if (lead.form_submission_id) {
     const { error: updateSubmissionError } = await supabase
       .from("form_submissions")
       .update({
         client_id: clientId,
-        converted_to_client_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        converted_to_client_at: convertedAt,
+        updated_at: convertedAt,
       })
       .eq("organization_id", organizationId)
       .eq("id", lead.form_submission_id);
 
     if (updateSubmissionError) {
       throw new Error(updateSubmissionError.message);
+    }
+  } else {
+    const { error: updateSubmissionByLeadError } = await supabase
+      .from("form_submissions")
+      .update({
+        client_id: clientId,
+        converted_to_client_at: convertedAt,
+        updated_at: convertedAt,
+      })
+      .eq("organization_id", organizationId)
+      .eq("lead_id", leadId)
+      .is("client_id", null);
+
+    if (updateSubmissionByLeadError) {
+      throw new Error(updateSubmissionByLeadError.message);
     }
   }
 

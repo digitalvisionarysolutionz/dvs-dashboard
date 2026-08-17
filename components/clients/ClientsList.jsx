@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Button from "../ui/Button.jsx";
 import CompactActionButton from "../ui/CompactActionButton.jsx";
 import DashboardModal from "../ui/DashboardModal.jsx";
@@ -486,82 +487,283 @@ function BusinessTab({ client }) {
   );
 }
 
-function NeedsTab() {
+function ChipList({ items = [], emptyText = "Nothing added yet." }) {
+  if (!items.length) {
+    return (
+      <p className="text-sm font-semibold leading-6 text-slate-400">
+        {emptyText}
+      </p>
+    );
+  }
+
   return (
-    <div className="space-y-3">
-      <PlaceholderPanel
-        title="Needs and goals will be connected through Intake and Project Briefs."
-        description="Most of these fields should live on the intake submission or new project record, then surface here inside the Client Portfolio."
-      />
-
-      <PortfolioCard eyebrow="Potential Services">
-        <div className="flex flex-wrap gap-2">
-          {placeholderNeeds.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
-            >
-              {item}
-            </span>
-          ))}
-        </div>
-      </PortfolioCard>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <PortfolioCard eyebrow="Goals">
-          <div className="flex flex-wrap gap-2">
-            {placeholderGoals.map((item) => (
-              <span
-                key={item}
-                className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </PortfolioCard>
-
-        <PortfolioCard eyebrow="Current Problems">
-          <div className="flex flex-wrap gap-2">
-            {placeholderProblems.map((item) => (
-              <span
-                key={item}
-                className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </PortfolioCard>
-      </div>
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <span
+          key={item}
+          className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-300"
+        >
+          {item}
+        </span>
+      ))}
     </div>
   );
 }
 
-function IntakeTab() {
+function NeedsTab({ client }) {
+  const needs = client?.needsSummary || {
+    services: [],
+    goals: [],
+    currentProblems: [],
+    assetsAvailable: [],
+    sourceCount: 0,
+  };
+
+  const linkedIntakes = client?.linkedIntakes || [];
+  const linkedBriefProjects = (client?.linkedProjects || []).filter(
+    (project) => project.brief
+  );
+
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <PortfolioCard eyebrow="Latest Intake">
-        <PlaceholderPanel
-          title="No intake submission linked yet."
-          description="Later, the private client intake form should save into Supabase, link to this client, and show the full submission here."
-          items={[
-            "Budget range",
-            "Timeline",
-            "Project details",
-            "Photo session",
-            "Vision",
-          ]}
+    <div className="space-y-3">
+      <PortfolioCard eyebrow="Connected Needs">
+        <p className="text-sm font-semibold leading-6 text-slate-400">
+          These are surfaced from linked private intake submissions and project
+          briefs. The source data stays connected to its original intake or
+          project record.
+        </p>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <PortfolioField
+            label="Linked Sources"
+            value={String(needs.sourceCount)}
+          />
+          <PortfolioField
+            label="Private Intakes"
+            value={String(linkedIntakes.length)}
+          />
+          <PortfolioField
+            label="Project Briefs"
+            value={String(linkedBriefProjects.length)}
+          />
+        </div>
+
+        {(linkedIntakes.length > 0 || linkedBriefProjects.length > 0) && (
+          <div className="mt-4 grid gap-2 lg:grid-cols-2">
+            {linkedIntakes.map((intake) => (
+              <div
+                key={intake.id}
+                className="rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-3"
+              >
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#5cf4ec]">
+                  Intake Source
+                </p>
+                <p className="mt-1 text-sm font-black text-white">
+                  {intake.formName || "Private Client Intake"}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-400">
+                  Submitted {intake.submittedAt}
+                </p>
+              </div>
+            ))}
+
+            {linkedBriefProjects.map((project) => (
+              <div
+                key={project.id}
+                className="rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-3"
+              >
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#5cf4ec]">
+                  Project Brief Source
+                </p>
+                <p className="mt-1 text-sm font-black text-white">
+                  {project.name}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-400">
+                  {project.status} · {project.dueDate}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </PortfolioCard>
+
+      <PortfolioCard eyebrow="Services Needed">
+        <ChipList
+          items={needs.services}
+          emptyText="No services have been captured from intake or project briefs yet."
         />
       </PortfolioCard>
 
-      <PortfolioCard eyebrow="Assets + Access">
-        <PlaceholderPanel
-          title="Assets checklist will live on intake or project briefs."
-          description="This should not become random text on the client profile. It should be structured and connected to the specific project."
-          items={placeholderAssets}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <PortfolioCard eyebrow="Goals">
+          <ChipList
+            items={needs.goals}
+            emptyText="No goals have been captured yet."
+          />
+        </PortfolioCard>
+
+        <PortfolioCard eyebrow="Current Problems">
+          <ChipList
+            items={needs.currentProblems}
+            emptyText="No current problems have been captured yet."
+          />
+        </PortfolioCard>
+      </div>
+
+      <PortfolioCard eyebrow="Assets + Access Checklist">
+        <ChipList
+          items={needs.assetsAvailable}
+          emptyText="No assets or access checklist items have been captured yet."
         />
       </PortfolioCard>
+    </div>
+  );
+}
+
+function IntakeSummaryCard({ intake }) {
+  const quickNotes = intake.quickNotes || {};
+  const hasQuickNotes = [
+    quickNotes.internalNotes,
+    quickNotes.recommendedService,
+    quickNotes.quotedAmount,
+    quickNotes.estimatedRange,
+    quickNotes.followUpPriority,
+    quickNotes.nextStep,
+  ].some(Boolean);
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#5cf4ec]">
+            {intake.formName || "Private Client Intake"}
+          </p>
+
+          <h3 className="mt-1 text-base font-black text-white">
+            {intake.businessName || "Intake Submission"}
+          </h3>
+
+          <p className="mt-1 text-sm font-semibold text-slate-400">
+            Submitted {intake.submittedAt}
+          </p>
+        </div>
+
+        <span className="rounded-full border border-[#5cf4ec]/20 bg-[#5cf4ec]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#5cf4ec]">
+          {intake.source || "Private Intake"}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <PortfolioField label="Budget" value={intake.budgetRange} />
+        <PortfolioField label="Timeline" value={intake.timeline} />
+        <PortfolioField label="Service Interest" value={intake.serviceInterest} />
+      </div>
+
+      {hasQuickNotes && (
+        <PortfolioCard eyebrow="Internal Quick Notes" className="mt-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <PortfolioField
+              label="Recommended Service"
+              value={quickNotes.recommendedService}
+            />
+            <PortfolioField label="Quoted Amount" value={quickNotes.quotedAmount} />
+            <PortfolioField
+              label="Estimated Range"
+              value={quickNotes.estimatedRange}
+            />
+            <PortfolioField
+              label="Follow-Up Priority"
+              value={quickNotes.followUpPriority}
+            />
+            <PortfolioField label="Next Step" value={quickNotes.nextStep} />
+          </div>
+
+          {quickNotes.internalNotes && (
+            <div className="mt-3 rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] p-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                Private Notes
+              </p>
+
+              <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+                {quickNotes.internalNotes}
+              </p>
+            </div>
+          )}
+
+          <p className="mt-3 rounded-[var(--radius-md)] border border-amber-300/15 bg-amber-300/10 px-3 py-2 text-[11px] font-bold leading-5 text-amber-100">
+            Internal only. Do not expose private notes to a future client portal.
+          </p>
+        </PortfolioCard>
+      )}
+
+      {(intake.projectDetails || intake.successDefinition) && (
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {intake.projectDetails && (
+            <PortfolioCard eyebrow="Project Details">
+              <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+                {intake.projectDetails}
+              </p>
+            </PortfolioCard>
+          )}
+
+          {intake.successDefinition && (
+            <PortfolioCard eyebrow="Success Definition">
+              <p className="whitespace-pre-line text-sm font-semibold leading-6 text-slate-300">
+                {intake.successDefinition}
+              </p>
+            </PortfolioCard>
+          )}
+        </div>
+      )}
+
+      {intake.selectedServices?.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+            Selected Services
+          </p>
+          <ChipList items={intake.selectedServices} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IntakeTab({ client }) {
+  const intakes = client?.linkedIntakes || [];
+
+  if (!intakes.length) {
+    return (
+      <div className="grid gap-3 lg:grid-cols-2">
+        <PortfolioCard eyebrow="Latest Intake">
+          <PlaceholderPanel
+            title="No intake submission linked yet."
+            description="Private Intake submissions will appear here after they create a lead and that lead is converted into this client."
+            items={[
+              "Budget range",
+              "Timeline",
+              "Project details",
+              "Photo session",
+              "Vision",
+            ]}
+          />
+        </PortfolioCard>
+
+        <PortfolioCard eyebrow="Assets + Access">
+          <PlaceholderPanel
+            title="Assets checklist will come from intake or project briefs."
+            description="Access should track whether access is needed or available, not passwords or private login values."
+            items={placeholderAssets}
+          />
+        </PortfolioCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {intakes.map((intake) => (
+        <IntakeSummaryCard key={intake.id} intake={intake} />
+      ))}
     </div>
   );
 }
@@ -601,8 +803,8 @@ function ClientPortfolioContent({ client, activeTab, onCreateProject }) {
   }
 
   if (activeTab === "needs") {
-    return <NeedsTab />;
-  }
+  return <NeedsTab client={client} />;
+}
 
   if (activeTab === "projects") {
     return (
@@ -611,8 +813,8 @@ function ClientPortfolioContent({ client, activeTab, onCreateProject }) {
   }
 
   if (activeTab === "intake") {
-    return <IntakeTab />;
-  }
+  return <IntakeTab client={client} />;
+}
 
   if (activeTab === "notes") {
     return <NotesTab client={client} />;
@@ -1058,6 +1260,25 @@ function ClientDirectory({
 }
 
 function ClientFormModal({ open, client, onClose }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const logoInputRef = useRef(null);
+  const [logoMessage, setLogoMessage] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+  const [selectedLogoName, setSelectedLogoName] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setLogoMessage("");
+      setFormMessage("");
+      setSelectedLogoName("");
+
+      if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+      }
+    }
+  }, [open, client?.id]);
+
   if (!open) {
     return null;
   }
@@ -1065,6 +1286,96 @@ function ClientFormModal({ open, client, onClose }) {
   const isEditing = Boolean(client?.id);
   const action = isEditing ? updateClientRecord : createClientRecord;
   const formId = isEditing ? "edit-client-form" : "new-client-form";
+
+  function validateLogoFile(form) {
+    const logoFile = form.elements.logoFile?.files?.[0];
+
+    if (!logoFile) {
+      return "";
+    }
+
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/svg+xml",
+    ];
+
+    if (!allowedTypes.includes(logoFile.type)) {
+      return "Logo must be a PNG, JPG, WEBP, or SVG file.";
+    }
+
+    if (logoFile.size > 5 * 1024 * 1024) {
+      return "Logo must be 5MB or smaller. Please compress the file and try again.";
+    }
+
+    return "";
+  }
+
+  function clearSelectedLogoFile() {
+    if (logoInputRef.current) {
+      logoInputRef.current.value = "";
+    }
+
+    setSelectedLogoName("");
+    setLogoMessage("");
+  }
+
+  function handleLogoFileChange(event) {
+    const form = event.currentTarget.form;
+    const logoFile = event.currentTarget.files?.[0];
+
+    setSelectedLogoName(logoFile?.name || "");
+
+    if (!logoFile) {
+      setLogoMessage("");
+      return;
+    }
+
+    const logoError = form ? validateLogoFile(form) : "";
+
+    setLogoMessage(logoError);
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const logoError = validateLogoFile(form);
+
+    if (logoError) {
+      setLogoMessage(logoError);
+      setFormMessage("");
+      return;
+    }
+
+    setLogoMessage("");
+    setFormMessage(isEditing ? "Saving client..." : "Creating client...");
+
+    const formData = new FormData(form);
+
+    startTransition(async () => {
+      try {
+        await action(formData);
+
+        setFormMessage("");
+        clearSelectedLogoFile();
+        router.refresh();
+        onClose();
+      } catch (error) {
+        setFormMessage(
+          error?.message ||
+            "Something went wrong while saving this client. Please try again."
+        );
+      }
+    });
+  }
 
   return (
     <DashboardModal
@@ -1085,24 +1396,30 @@ function ClientFormModal({ open, client, onClose }) {
             type="button"
             variant="secondary"
             onClick={onClose}
+            disabled={isPending}
           >
             Cancel
           </CompactActionButton>
 
-          <CompactActionButton type="submit" form={formId} variant="primary">
-            {isEditing ? "Save Changes" : "Save Client"}
+          <CompactActionButton
+            type="submit"
+            form={formId}
+            variant="primary"
+            disabled={isPending || Boolean(logoMessage)}
+          >
+            {isPending
+              ? isEditing
+                ? "Saving..."
+                : "Creating..."
+              : isEditing
+                ? "Save Changes"
+                : "Save Client"}
           </CompactActionButton>
         </>
       }
     >
-      <form
-  id={formId}
-  action={action}
-  onSubmit={onClose}
-  className="space-y-4"
->
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
         {isEditing && <input type="hidden" name="clientId" value={client.id} />}
-        <input type="hidden" name="existingLogoPath" value={client?.logoPath || ""} />
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Business Name" required>
@@ -1144,73 +1461,104 @@ function ClientFormModal({ open, client, onClose }) {
           </FormField>
 
           <FormField label="Website">
-  <input
-    name="website"
-    defaultValue={emptyField(client?.website)}
-    placeholder="example.com"
-    className="dvs-form-input"
-  />
-</FormField>
-
-<FormField label="Location">
-  <input
-    name="location"
-    defaultValue={client?.location || ""}
-    placeholder="City, State"
-    className="dvs-form-input"
-  />
-</FormField>
-
-<FormField label="Status">
-  <select
-    name="status"
-    defaultValue={client?.rawStatus || "active"}
-    className="dvs-form-input"
-  >
-    <option value="lead">Lead</option>
-    <option value="active">Active</option>
-    <option value="past">Past</option>
-    <option value="archived">Archived</option>
-  </select>
-</FormField>
-
-<FormField
-  label="Upload Logo"
-  description={
-    client?.logoPath
-      ? "Upload a new logo or remove the current one."
-      : "PNG, JPG, WEBP, or SVG. Max 5MB."
-  }
->
-  <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.025] p-3">
-    {client && (
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <ClientLogoPreview client={client} />
-
-        {client.logoUrl && (
-          <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-red-300/25 bg-red-400/10 px-3 text-xs font-black uppercase tracking-[0.14em] text-red-200">
             <input
-              type="checkbox"
-              name="removeLogo"
-              className="accent-red-300"
+              name="website"
+              defaultValue={emptyField(client?.website)}
+              placeholder="example.com"
+              className="dvs-form-input"
             />
-            Remove
-          </label>
-        )}
-      </div>
-    )}
+          </FormField>
 
-    <input
-      name="logoFile"
-      type="file"
-      accept="image/png,image/jpeg,image/webp,image/svg+xml"
-      className="block w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 py-2.5 text-sm font-semibold text-[var(--app-text-muted)] file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[#5cf4ec] file:px-3 file:py-2 file:text-xs file:font-black file:text-[#031012] hover:border-[#5cf4ec]/35"
-    />
-  </div>
-</FormField>
+          <FormField label="Location">
+            <input
+              name="location"
+              defaultValue={client?.location || ""}
+              placeholder="City, State"
+              className="dvs-form-input"
+            />
+          </FormField>
 
+          <FormField label="Status">
+            <select
+              name="status"
+              defaultValue={client?.rawStatus || "active"}
+              className="dvs-form-input"
+            >
+              <option value="lead">Lead</option>
+              <option value="active">Active</option>
+              <option value="past">Past</option>
+              <option value="archived">Archived</option>
+            </select>
+          </FormField>
+
+          <FormField
+            label="Upload Logo"
+            description={
+              client?.logoPath
+                ? "Current logo will stay unless you upload a new one or remove it."
+                : "PNG, JPG, WEBP, or SVG. Max 5MB."
+            }
+          >
+            <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.025] p-3">
+              {client && (
+                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <ClientLogoPreview client={client} />
+
+                  {client.logoUrl && (
+                    <label className="flex min-h-9 w-fit cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-red-300/25 bg-red-400/10 px-3 text-xs font-black uppercase tracking-[0.14em] text-red-200">
+                      <input
+                        type="checkbox"
+                        name="removeLogo"
+                        className="accent-red-300"
+                      />
+                      Remove
+                    </label>
+                  )}
+                </div>
+              )}
+
+              <input
+                ref={logoInputRef}
+                name="logoFile"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={handleLogoFileChange}
+                className="block w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 py-2.5 text-sm font-semibold text-[var(--app-text-muted)] file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[#5cf4ec] file:px-3 file:py-2 file:text-xs file:font-black file:text-[#031012] hover:border-[#5cf4ec]/35"
+              />
+
+              {selectedLogoName && (
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] px-3 py-2">
+                  <p className="min-w-0 truncate text-xs font-bold text-slate-300">
+                    Selected: {selectedLogoName}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={clearSelectedLogoFile}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-sm)] border border-white/10 bg-white/[0.035] text-sm font-black text-slate-300 transition hover:border-red-300/35 hover:bg-red-400/10 hover:text-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407]"
+                    aria-label="Clear selected logo file"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {logoMessage ? (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-[var(--radius-md)] border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-bold leading-5 text-red-100"
+                >
+                  {logoMessage}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  Uploading a new file replaces the current logo after saving.
+                </p>
+              )}
+            </div>
+          </FormField>
         </div>
-      
+
         <FormField label="Notes">
           <textarea
             name="notes"
@@ -1220,6 +1568,15 @@ function ClientFormModal({ open, client, onClose }) {
             className="dvs-form-input resize-none"
           />
         </FormField>
+
+        {formMessage && (
+          <p
+            role="status"
+            className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-bold text-slate-300"
+          >
+            {formMessage}
+          </p>
+        )}
       </form>
     </DashboardModal>
   );
@@ -1233,20 +1590,6 @@ export default function ClientsList({ clients = [] }) {
   const [clientFormOpen, setClientFormOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [statusValue, setStatusValue] = useState("all");
-
-  useEffect(() => {
-    function handleOpenNewClient() {
-      setDetailsClient(null);
-      setEditingClient(null);
-      setClientFormOpen(true);
-    }
-
-    window.addEventListener("dvs-open-new-client", handleOpenNewClient);
-
-    return () => {
-      window.removeEventListener("dvs-open-new-client", handleOpenNewClient);
-    };
-  }, []);
 
   const counts = useMemo(
     () => ({

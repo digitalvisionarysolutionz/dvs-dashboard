@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "../../app/(dashboard)/projects/actions.js";
 import { createClientRecord } from "../../app/(dashboard)/clients/actions.js";
@@ -270,6 +270,114 @@ function NewProjectModal({
 }
 
 function NewClientModal({ open, onClose }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const logoInputRef = useRef(null);
+  const [logoMessage, setLogoMessage] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+  const [selectedLogoName, setSelectedLogoName] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setLogoMessage("");
+      setFormMessage("");
+      setSelectedLogoName("");
+
+      if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+      }
+    }
+  }, [open]);
+
+  function validateLogoFile(form) {
+    const logoFile = form.elements.logoFile?.files?.[0];
+
+    if (!logoFile) {
+      return "";
+    }
+
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/svg+xml",
+    ];
+
+    if (!allowedTypes.includes(logoFile.type)) {
+      return "Logo must be a PNG, JPG, WEBP, or SVG file.";
+    }
+
+    if (logoFile.size > 5 * 1024 * 1024) {
+      return "Logo must be 5MB or smaller. Please compress the file and try again.";
+    }
+
+    return "";
+  }
+
+  function clearSelectedLogoFile() {
+    if (logoInputRef.current) {
+      logoInputRef.current.value = "";
+    }
+
+    setSelectedLogoName("");
+    setLogoMessage("");
+  }
+
+  function handleLogoFileChange(event) {
+    const form = event.currentTarget.form;
+    const logoFile = event.currentTarget.files?.[0];
+
+    setSelectedLogoName(logoFile?.name || "");
+
+    if (!logoFile) {
+      setLogoMessage("");
+      return;
+    }
+
+    const logoError = form ? validateLogoFile(form) : "";
+    setLogoMessage(logoError);
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const logoError = validateLogoFile(form);
+
+    if (logoError) {
+      setLogoMessage(logoError);
+      setFormMessage("");
+      return;
+    }
+
+    setLogoMessage("");
+    setFormMessage("Creating client...");
+
+    const formData = new FormData(form);
+
+    startTransition(async () => {
+      try {
+        await createClientRecord(formData);
+
+        setFormMessage("");
+        clearSelectedLogoFile();
+        router.refresh();
+        onClose();
+      } catch (error) {
+        setFormMessage(
+          error?.message ||
+            "Something went wrong while creating this client. Please try again."
+        );
+      }
+    });
+  }
+
   return (
     <DashboardModal
       open={open}
@@ -281,7 +389,12 @@ function NewClientModal({ open, onClose }) {
       closeLabel="Close new client form"
       footer={
         <>
-          <CompactActionButton type="button" variant="secondary" onClick={onClose}>
+          <CompactActionButton
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isPending}
+          >
             Cancel
           </CompactActionButton>
 
@@ -289,16 +402,16 @@ function NewClientModal({ open, onClose }) {
             type="submit"
             form="dashboard-new-client-form"
             variant="primary"
+            disabled={isPending || Boolean(logoMessage)}
           >
-            Save Client
+            {isPending ? "Creating..." : "Save Client"}
           </CompactActionButton>
         </>
       }
     >
       <form
         id="dashboard-new-client-form"
-        action={createClientRecord}
-        onSubmit={onClose}
+        onSubmit={handleSubmit}
         className="space-y-4"
       >
         <div className="grid gap-3 md:grid-cols-2">
@@ -365,12 +478,46 @@ function NewClientModal({ open, onClose }) {
             label="Upload Logo"
             description="PNG, JPG, WEBP, or SVG. Max 5MB."
           >
-            <input
-              name="logoFile"
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-              className="block w-full cursor-pointer rounded-[var(--radius-md)] border border-white/10 bg-[#071018] px-3 py-2.5 text-sm font-semibold text-slate-400 file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[#5cf4ec] file:px-3 file:py-2 file:text-xs file:font-black file:text-[#031012] hover:border-[#5cf4ec]/35"
-            />
+            <div className="rounded-[var(--radius-md)] border border-[var(--app-border)] bg-white/[0.025] p-3">
+              <input
+                ref={logoInputRef}
+                name="logoFile"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={handleLogoFileChange}
+                className="block w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 py-2.5 text-sm font-semibold text-[var(--app-text-muted)] file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[#5cf4ec] file:px-3 file:py-2 file:text-xs file:font-black file:text-[#031012] hover:border-[#5cf4ec]/35"
+              />
+
+              {selectedLogoName && (
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-white/10 bg-[#050b12] px-3 py-2">
+                  <p className="min-w-0 truncate text-xs font-bold text-slate-300">
+                    Selected: {selectedLogoName}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={clearSelectedLogoFile}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-sm)] border border-white/10 bg-white/[0.035] text-sm font-black text-slate-300 transition hover:border-red-300/35 hover:bg-red-400/10 hover:text-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5cf4ec] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020407]"
+                    aria-label="Clear selected logo file"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {logoMessage ? (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-[var(--radius-md)] border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-bold leading-5 text-red-100"
+                >
+                  {logoMessage}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  Uploading a logo is optional.
+                </p>
+              )}
+            </div>
           </FormField>
         </div>
 
@@ -382,12 +529,21 @@ function NewClientModal({ open, onClose }) {
             className="dvs-form-input resize-none"
           />
         </FormField>
+
+        {formMessage && (
+          <p
+            role="status"
+            className="rounded-[var(--radius-md)] border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-bold text-slate-300"
+          >
+            {formMessage}
+          </p>
+        )}
       </form>
     </DashboardModal>
   );
 }
 
-function NewLeadModal({ open, onClose }) {
+function NewLeadModal({ open, onClose, initialStage = "new_lead" }) {
   return (
     <DashboardModal
       open={open}
@@ -511,7 +667,7 @@ function NewLeadModal({ open, onClose }) {
           </FormField>
 
           <FormField label="Stage">
-            <select name="stage" defaultValue="new_lead" className="dvs-form-input">
+            <select name="stage" defaultValue={initialStage || "new_lead"} className="dvs-form-input">
               <option value="new_lead">New Lead</option>
               <option value="contacted">Contacted</option>
               <option value="discovery">Discovery</option>
@@ -777,6 +933,7 @@ export default function Topbar({ onMenuClick }) {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [leadModalStage, setLeadModalStage] = useState("new_lead");
   const [projectClientPrefill, setProjectClientPrefill] = useState({
     clientId: "",
     clientName: "",
@@ -798,7 +955,9 @@ export default function Topbar({ onMenuClick }) {
       setClientModalOpen(true);
     }
 
-    function handleOpenNewLead() {
+    function handleOpenNewLead(event) {
+      const detail = event?.detail || {};
+      setLeadModalStage(detail.stage || "new_lead");
       setLeadModalOpen(true);
     }
 
@@ -898,7 +1057,10 @@ export default function Topbar({ onMenuClick }) {
             <GlobalCreateMenu
               onOpenIntake={() => router.push("/intake")}
               onOpenProject={openBlankProject}
-              onOpenLead={() => setLeadModalOpen(true)}
+              onOpenLead={() => {
+                setLeadModalStage("new_lead");
+                setLeadModalOpen(true);
+              }}
               onOpenClient={() => setClientModalOpen(true)}
               onOpenMeeting={() =>
                 window.open(strategyCallLink, "_blank", "noopener,noreferrer")
@@ -920,7 +1082,11 @@ export default function Topbar({ onMenuClick }) {
         onClose={() => setClientModalOpen(false)}
       />
 
-      <NewLeadModal open={leadModalOpen} onClose={() => setLeadModalOpen(false)} />
+      <NewLeadModal
+        open={leadModalOpen}
+        initialStage={leadModalStage}
+        onClose={() => setLeadModalOpen(false)}
+      />
     </>
   );
 }

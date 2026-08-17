@@ -11,19 +11,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const iconVersion = "20260814";
+
 export const metadata = {
   title: "DVS Tech Dashboard",
   description: "Business Command Center",
   icons: {
-  icon: [
-    {
-      url: "/dvs-dashboard-favicon-2026.png",
-      type: "image/png",
-    },
-  ],
-  shortcut: "/dvs-dashboard-favicon-2026.png",
-  apple: "/dvs-dashboard-favicon-2026.png",
-},
+    icon: [
+      {
+        url: `/brand/DVSlogo.png?v=${iconVersion}`,
+        type: "image/png",
+      },
+    ],
+    shortcut: [
+      {
+        url: `/brand/DVSlogo.png?v=${iconVersion}`,
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: `/brand/DVSlogo.png?v=${iconVersion}`,
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({ children }) {

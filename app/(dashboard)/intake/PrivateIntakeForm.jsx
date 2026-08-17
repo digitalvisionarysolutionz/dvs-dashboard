@@ -347,10 +347,7 @@ function QuickNotes({ quickNotes, setQuickNotes }) {
               </FormField>
             </div>
 
-            <p className="rounded-[var(--radius-md)] border border-amber-300/15 bg-amber-300/10 px-3 py-2 text-[11px] font-bold leading-5 text-amber-100">
-              Internal only. Do not enter passwords, 2FA codes, banking info, or
-              private access keys.
-            </p>
+
           </div>
         </div>
       )}
@@ -702,10 +699,7 @@ export default function PrivateIntakeForm() {
         >
           <CheckGrid name="assetsAvailable" options={assetsAvailable} />
 
-          <p className="mt-4 rounded-[var(--radius-md)] border border-amber-300/15 bg-amber-300/10 px-4 py-3 text-[11px] font-bold leading-5 text-amber-100">
-            Do not enter passwords, 2FA codes, banking info, or private access
-            keys. This only tracks whether access/assets are needed or available.
-          </p>
+
         </IntakeCard>
 
         <IntakeCard
@@ -808,10 +802,10 @@ export default function PrivateIntakeForm() {
       <QuickNotes quickNotes={quickNotes} setQuickNotes={setQuickNotes} />
 
       <IntakeSuccessModal
-        open={success}
-        onStartNew={resetForm}
-        onClose={() => setSuccess(false)}
-      />
+  open={success}
+  onStartNew={resetForm}
+  onClose={() => router.push("/crm")}
+/>
     </div>
   );
 }

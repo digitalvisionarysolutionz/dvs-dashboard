@@ -114,11 +114,7 @@ function getDisplayProgress(project) {
 }
 
 function getProjectTitle(project) {
-  if (!project.clientName || project.clientName === "Internal") {
-    return project.name;
-  }
-
-  return `${project.clientName} — ${project.name}`;
+  return project.name;
 }
 
 function emptyField(value, fallback = "") {
@@ -246,8 +242,11 @@ function FilterBar({
         onChange={(event) => onSortChange(event.target.value)}
         className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-3 text-sm font-bold text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)] sm:w-[160px]"
       >
+        <option className="bg-[#071018]" value="recent">
+          Sort: Most Recent
+        </option>
         <option className="bg-[#071018]" value="due">
-          Sort: Due
+          Sort: Due Next
         </option>
         <option className="bg-[#071018]" value="progress">
           Sort: Progress
@@ -1214,6 +1213,16 @@ function DetailsModal({ project, onClose, onOpenEdit }) {
 function ProjectFormModal({ project, open, onClose }) {
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("__internal__");
+
+  useEffect(() => {
+    if (!open || !project) {
+      setSelectedClientId("__internal__");
+      return;
+    }
+
+    setSelectedClientId(project.clientId || "__internal__");
+  }, [open, project?.id, project?.clientId]);
 
   useEffect(() => {
     if (!open) {
@@ -1253,6 +1262,10 @@ function ProjectFormModal({ project, open, onClose }) {
   if (!open || !project) {
     return null;
   }
+
+  const currentClientMissingFromOptions =
+    project.clientId &&
+    !clients.some((client) => client.id === project.clientId);
 
   return (
     <DashboardModal
@@ -1308,13 +1321,18 @@ function ProjectFormModal({ project, open, onClose }) {
             <select
               name="clientId"
               className="dvs-form-input"
-              defaultValue={project.clientId || ""}
+              value={selectedClientId}
+              onChange={(event) => setSelectedClientId(event.target.value)}
             >
-              <option value="">
-                {loadingClients
-                  ? "Loading clients..."
-                  : "No existing client selected"}
+              <option value="__internal__">
+                {loadingClients ? "Loading clients..." : "Internal / No client"}
               </option>
+
+              {currentClientMissingFromOptions && (
+                <option value={project.clientId}>
+                  {project.clientName || "Current linked client"}
+                </option>
+              )}
 
               {clients.map((client) => (
                 <option key={client.id} value={client.id}>
@@ -1390,6 +1408,7 @@ function ProjectFormModal({ project, open, onClose }) {
             />
           </FormField>
         </div>
+
         <ProjectBriefFields brief={project.brief || {}} />
       </form>
     </DashboardModal>
@@ -1406,7 +1425,7 @@ export default function ProjectsList({ projects = [] }) {
   const [searchValue, setSearchValue] = useState("");
   const [statusValue, setStatusValue] = useState("all");
   const [clientValue, setClientValue] = useState("all");
-  const [sortValue, setSortValue] = useState("due");
+  const [sortValue, setSortValue] = useState("recent");
 
   const counts = useMemo(
     () => ({
@@ -1451,6 +1470,10 @@ export default function ProjectsList({ projects = [] }) {
     }
 
     return [...nextProjects].sort((a, b) => {
+      if (sortValue === "recent") {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      }
+
       if (sortValue === "progress") {
         return getDisplayProgress(b) - getDisplayProgress(a);
       }
@@ -1464,9 +1487,15 @@ export default function ProjectsList({ projects = [] }) {
         return a.name.localeCompare(b.name);
       }
 
-      return (a.dueDateInput || "9999-12-31").localeCompare(
-        b.dueDateInput || "9999-12-31"
-      );
+      const dueCompare = (a.dueDateInput || "9999-12-31").localeCompare(
+  b.dueDateInput || "9999-12-31"
+);
+
+if (dueCompare !== 0) {
+  return dueCompare;
+}
+
+return a.name.localeCompare(b.name);
     });
   }, [
     activeTab,

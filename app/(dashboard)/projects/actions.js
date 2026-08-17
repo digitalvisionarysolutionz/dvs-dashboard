@@ -215,6 +215,8 @@ async function resolveProjectClientId({
   existingClientId,
   newClientName,
 }) {
+  const normalizedExistingClientId = cleanText(existingClientId);
+
   if (newClientName) {
     const { data: existingClient, error: existingError } = await supabase
       .from("clients")
@@ -250,10 +252,17 @@ async function resolveProjectClientId({
     return newClient.id;
   }
 
+  if (
+    !normalizedExistingClientId ||
+    normalizedExistingClientId === "__internal__"
+  ) {
+    return null;
+  }
+
   return validateExistingClientId({
     supabase,
     organizationId,
-    existingClientId,
+    existingClientId: normalizedExistingClientId,
   });
 }
 
