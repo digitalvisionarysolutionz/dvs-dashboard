@@ -212,7 +212,6 @@ function CRMViewToggle({
   onViewChange,
   pipelineCount,
   archiveCount,
-  onExport,
 }) {
   const views = [
     { key: "pipeline", label: "Pipeline", count: pipelineCount },
@@ -221,45 +220,35 @@ function CRMViewToggle({
 
   return (
     <div className="mb-5 border-b border-[var(--app-border)]">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-8">
-          {views.map((view) => {
-            const isActive = viewMode === view.key;
+  <div className="flex flex-wrap gap-8">
+    {views.map((view) => {
+      const isActive = viewMode === view.key;
 
-            return (
-              <button
-                key={view.key}
-                type="button"
-                onClick={() => onViewChange(view.key)}
-                className={`relative pb-4 text-sm font-black transition md:text-base ${
-                  isActive
-                    ? "text-[var(--app-accent)]"
-                    : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
-                }`}
-              >
-                {view.label}
-
-                <span className="ml-2 rounded-[var(--radius-pill)] bg-[var(--app-accent-soft)] px-2 py-0.5 text-xs font-black">
-                  {view.count}
-                </span>
-
-                {isActive && (
-                  <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[var(--app-accent)] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
+      return (
         <button
-  type="button"
-  onClick={onExport}
-  className="h-10 w-fit whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-4 text-sm font-black text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:text-white"
->
-  Export
-</button>
-      </div>
-    </div>
+          key={view.key}
+          type="button"
+          onClick={() => onViewChange(view.key)}
+          className={`relative pb-4 text-sm font-black transition md:text-base ${
+            isActive
+              ? "text-[var(--app-accent)]"
+              : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
+          }`}
+        >
+          {view.label}
+
+          <span className="ml-2 rounded-[var(--radius-pill)] bg-[var(--app-accent-soft)] px-2 py-0.5 text-xs font-black">
+            {view.count}
+          </span>
+
+          {isActive && (
+            <span className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-full bg-[var(--app-accent)] shadow-[0_0_18px_rgba(92,244,236,0.75)]" />
+          )}
+        </button>
+      );
+    })}
+  </div>
+</div>
   );
 }
 
@@ -272,9 +261,11 @@ function CRMFilters({
   onSourceChange,
   services,
   sources,
+  onExport,
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-3">
+  <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+    <div className="flex flex-wrap items-center gap-3">
       <label
         className="relative block"
         style={{
@@ -334,8 +325,17 @@ function CRMFilters({
           </option>
         ))}
       </select>
-    </div>
-  );
+        </div>
+
+    <button
+      type="button"
+      onClick={onExport}
+      className="h-10 w-fit whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--app-border)] bg-[#071018] px-4 text-sm font-black text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:text-white"
+    >
+      Export
+    </button>
+  </div>
+);
 }
 
 function LeadActions({ lead }) {
@@ -1474,7 +1474,6 @@ function closeLeadForm() {
   onViewChange={setViewMode}
   pipelineCount={pipelineLeads.length}
   archiveCount={archivedLeads.length}
-  onExport={handleExportCsv}
 />
 
 <CRMFilters
@@ -1486,6 +1485,7 @@ function closeLeadForm() {
   onSourceChange={setSourceValue}
   services={services}
   sources={sources}
+  onExport={handleExportCsv}
 />
 
 {viewMode === "pipeline" ? (
