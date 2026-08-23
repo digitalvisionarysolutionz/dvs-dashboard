@@ -8,19 +8,13 @@ export default function ClientsHeaderActions() {
   }
 
   return (
-    <>
-      <Button type="button" variant="secondary" size="sm" className="whitespace-nowrap">
-        Export
-      </Button>
-
-      <Button
-        type="button"
-        size="sm"
-        className="whitespace-nowrap"
-        onClick={openNewClientModal}
-      >
-        + New Client
-      </Button>
-    </>
+    <Button
+      type="button"
+      size="sm"
+      className="whitespace-nowrap"
+      onClick={openNewClientModal}
+    >
+      + New Client
+    </Button>
   );
 }
