@@ -71,6 +71,46 @@ function DotsIcon() {
   );
 }
 
+function escapeCsvValue(value) {
+  const stringValue = String(value ?? "");
+
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n") ||
+    stringValue.includes("\r")
+  ) {
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+
+  return stringValue;
+}
+
+function downloadCsv(filename, rows) {
+  const csvContent =
+    "\uFEFF" +
+    rows.map((row) => row.map((value) => escapeCsvValue(value)).join(",")).join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+
+  document.body.appendChild(link);
+  link.click();
+
+  window.setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
 function ProjectIcon({ project }) {
   const firstLetter = project.name?.charAt(0)?.toUpperCase() || "P";
 
@@ -1471,8 +1511,15 @@ export default function ProjectsList({ projects = [] }) {
 
     return [...nextProjects].sort((a, b) => {
       if (sortValue === "recent") {
-        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-      }
+  const bTime = new Date(b.rawCreatedAt || b.createdAt || 0).getTime();
+  const aTime = new Date(a.rawCreatedAt || a.createdAt || 0).getTime();
+
+  if (bTime !== aTime) {
+    return bTime - aTime;
+  }
+
+  return a.name.localeCompare(b.name);
+}
 
       if (sortValue === "progress") {
         return getDisplayProgress(b) - getDisplayProgress(a);
@@ -1538,6 +1585,51 @@ return a.name.localeCompare(b.name);
   }, 250);
 }
 
+function handleExportProjects() {
+  const headers = [
+    "Project Name",
+    "Client",
+    "Status",
+    "Priority",
+    "Due Date",
+    "Progress",
+    "Description",
+    "Created Date",
+  ];
+
+  const rows = visibleProjects.map((project) => [
+    project.name,
+    project.clientName,
+    project.status,
+    project.priority,
+    project.dueDate,
+    `${getDisplayProgress(project)}%`,
+    project.description,
+    project.createdAt || "",
+  ]);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  downloadCsv(`dvs-projects-${today}.csv`, [headers, ...rows]);
+}
+
+useEffect(() => {
+  function handleExportEvent() {
+    handleExportProjects();
+  }
+
+  window.addEventListener("dvs-export-projects", handleExportEvent);
+  window.addEventListener("dvs-dashboard-export-projects", handleExportEvent);
+
+  return () => {
+    window.removeEventListener("dvs-export-projects", handleExportEvent);
+    window.removeEventListener(
+      "dvs-dashboard-export-projects",
+      handleExportEvent
+    );
+  };
+}, [visibleProjects]);
+
   return (
     <>
       <div className="space-y-5">
@@ -1551,6 +1643,7 @@ return a.name.localeCompare(b.name);
               counts={counts}
             />
 
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <FilterBar
               searchValue={searchValue}
               onSearchChange={setSearchValue}
@@ -1562,6 +1655,17 @@ return a.name.localeCompare(b.name);
               onSortChange={setSortValue}
               clients={clients}
             />
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleExportProjects}
+              className="w-fit"
+            >
+              Export
+            </Button>
+          </div>
 
             <BatchToolbar
               selectedIds={selectedIds}

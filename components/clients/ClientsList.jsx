@@ -54,6 +54,46 @@ function DotsIcon() {
   );
 }
 
+function escapeCsvValue(value) {
+  const stringValue = String(value ?? "");
+
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n") ||
+    stringValue.includes("\r")
+  ) {
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+
+  return stringValue;
+}
+
+function downloadCsv(filename, rows) {
+  const csvContent =
+    "\uFEFF" +
+    rows.map((row) => row.map((value) => escapeCsvValue(value)).join(",")).join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+
+  document.body.appendChild(link);
+  link.click();
+
+  window.setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
 function ClientLogo({ client }) {
   if (client.logoUrl) {
     return (
@@ -1684,6 +1724,53 @@ useEffect(() => {
   }, 0);
 }
 
+function handleExportClients() {
+    const headers = [
+      "Business Name",
+      "Contact Name",
+      "Email",
+      "Phone",
+      "Website",
+      "Location",
+      "Status",
+      "Notes",
+      "Created Date",
+    ];
+
+    const rows = visibleClients.map((client) => [
+      client.businessName,
+      client.name,
+      client.email,
+      client.phone,
+      client.website || "",
+      client.location || "",
+      client.status,
+      client.notes,
+      client.createdAt || "",
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    downloadCsv(`dvs-clients-${today}.csv`, [headers, ...rows]);
+  }
+
+    useEffect(() => {
+    function handleExportEvent() {
+      handleExportClients();
+    }
+
+    window.addEventListener("dvs-export-clients", handleExportEvent);
+    window.addEventListener("dvs-dashboard-export-clients", handleExportEvent);
+
+    return () => {
+      window.removeEventListener("dvs-export-clients", handleExportEvent);
+      window.removeEventListener(
+        "dvs-dashboard-export-clients",
+        handleExportEvent
+      );
+    };
+  }, [visibleClients]);
+
   return (
     <>
       <div className="rounded-[var(--radius-xl)] border border-[var(--app-border)] bg-gradient-to-br from-white/[0.045] via-white/[0.025] to-cyan-300/[0.025] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)]">
@@ -1694,12 +1781,24 @@ useEffect(() => {
             counts={counts}
           />
 
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <FilterBar
             searchValue={searchValue}
             onSearchChange={setSearchValue}
             statusValue={statusValue}
             onStatusChange={setStatusValue}
           />
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleExportClients}
+            className="w-fit"
+          >
+            Export
+          </Button>
+        </div>
 
           <BatchToolbar
             selectedIds={selectedIds}
