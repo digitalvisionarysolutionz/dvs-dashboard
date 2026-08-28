@@ -5,6 +5,7 @@ import DashboardModal from "../ui/DashboardModal.jsx";
 import CalendarDayModal from "./CalendarDayModal.jsx";
 import CalendarEventCard from "./CalendarEventCard.jsx";
 import CalendarHeader from "./CalendarHeader.jsx";
+import { ALL_CALENDAR_FILTER_IDS } from "./CalendarFilters.jsx";
 import CalendarMonthView from "./CalendarMonthView.jsx";
 import CalendarWeekView from "./CalendarWeekView.jsx";
 import NewEventModal from "./NewEventModal.jsx";
@@ -20,6 +21,37 @@ import {
 
 const DAY_DRAWER_BREAKPOINT_QUERY = "(min-width: 1024px)";
 const DAY_DRAWER_ANIMATION_MS = 280;
+
+function getCalendarFilterCategory(event) {
+  if (event?.category) {
+    return event.category;
+  }
+
+  const sourceType = String(event?.sourceType || "").toLowerCase();
+  const eventType = String(event?.eventType || "").toLowerCase();
+
+  if (sourceType === "project" || eventType.includes("deadline")) {
+    return "deadlines";
+  }
+
+  if (sourceType === "lead" || eventType.includes("follow")) {
+    return "follow_ups";
+  }
+
+  if (sourceType === "intake" || eventType.includes("intake")) {
+    return "intake_submissions";
+  }
+
+  if (eventType.includes("birthday")) {
+    return "birthdays";
+  }
+
+  if (eventType.includes("reminder")) {
+    return "reminders";
+  }
+
+  return "meetings";
+}
 
 function InfoTile({ label, value }) {
   return (
@@ -222,8 +254,7 @@ function CalendarDayDrawer({
                 <div className="rounded-[var(--radius-md)] border border-dashed border-white/12 bg-black/20 p-5">
                   <p className="text-sm font-black text-white">No events yet.</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                    Project deadlines, lead follow-ups, intake submissions, and
-                    internal events will appear here.
+                    No visible events match the active calendar filters.
                   </p>
                 </div>
               )}
@@ -262,7 +293,7 @@ function TodayView({ events = [], onEventClick }) {
           <div className="rounded-[var(--radius-md)] border border-dashed border-white/12 bg-black/20 p-5">
             <p className="text-sm font-black text-white">No events today.</p>
             <p className="mt-2 text-sm font-semibold text-slate-500">
-              Today is clear based on current project, CRM, and intake dates.
+              No visible events match the active calendar filters.
             </p>
           </div>
         )}
@@ -276,6 +307,9 @@ export default function CalendarShell({ events = [] }) {
   const todayKey = getDateKey(today);
 
   const [viewMode, setViewMode] = useState("month");
+  const [activeCalendarFilters, setActiveCalendarFilters] = useState(
+    ALL_CALENDAR_FILTER_IDS
+  );
   const [currentMonthDate, setCurrentMonthDate] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
   );
@@ -286,9 +320,35 @@ export default function CalendarShell({ events = [] }) {
   const [newEventOpen, setNewEventOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
-  const eventsByDate = useMemo(() => groupEventsByDate(events), [events]);
+  const filteredEvents = useMemo(() => {
+    const activeSet = new Set(activeCalendarFilters);
+
+    return events.filter((event) =>
+      activeSet.has(getCalendarFilterCategory(event))
+    );
+  }, [events, activeCalendarFilters]);
+
+  const eventsByDate = useMemo(
+    () => groupEventsByDate(filteredEvents),
+    [filteredEvents]
+  );
+
   const selectedDayEvents = eventsByDate.get(selectedDateKey) || [];
   const todaysEvents = eventsByDate.get(todayKey) || [];
+
+  useEffect(() => {
+    if (!selectedEvent) {
+      return;
+    }
+
+    const eventStillVisible = filteredEvents.some(
+      (event) => event.id === selectedEvent.id
+    );
+
+    if (!eventStillVisible) {
+      setSelectedEvent(null);
+    }
+  }, [filteredEvents, selectedEvent]);
 
   function syncSelectedDate(dateKey) {
     const selectedDate = getDateFromKey(dateKey);
@@ -407,6 +467,10 @@ export default function CalendarShell({ events = [] }) {
         onPrevious={handlePrevious}
         onNext={handleNext}
         onNewEvent={() => setNewEventOpen(true)}
+        calendarFilters={activeCalendarFilters}
+        onCalendarFiltersChange={setActiveCalendarFilters}
+        totalEventCount={events.length}
+        filteredEventCount={filteredEvents.length}
       />
 
       {viewMode === "month" && (

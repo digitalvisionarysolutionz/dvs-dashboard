@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "../ui/Button.jsx";
+import CalendarFilters from "./CalendarFilters.jsx";
 import { formatMonthLabel } from "./calendarUtils.js";
 
 function ArrowIcon({ direction = "left" }) {
@@ -25,6 +26,10 @@ export default function CalendarHeader({
   onPrevious,
   onNext,
   onNewEvent,
+  calendarFilters,
+  onCalendarFiltersChange,
+  totalEventCount = 0,
+  filteredEventCount = 0,
 }) {
   const views = [
     { key: "month", label: "Month" },
@@ -82,6 +87,13 @@ export default function CalendarHeader({
               </button>
             );
           })}
+
+          <CalendarFilters
+            selectedFilters={calendarFilters}
+            onChange={onCalendarFiltersChange}
+            totalEventCount={totalEventCount}
+            filteredEventCount={filteredEventCount}
+          />
         </div>
 
         <div className="flex items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--app-border)] bg-[#071018] p-1.5 sm:w-fit">
